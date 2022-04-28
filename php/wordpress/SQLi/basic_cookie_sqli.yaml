@@ -1,0 +1,139 @@
+rules:
+- id: http_header_sqli
+  patterns:
+      - pattern-either:
+        - pattern: $_COOKIE[$KEY]
+      - pattern-inside: $wpdb->get_results($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+- id: basic_sqli_get_row
+  patterns:
+      - pattern-either:
+        - pattern: $_COOKIE[$KEY]
+      - pattern-inside: $wpdb->get_row($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+- id: basic_sqli_query
+  patterns:
+      - pattern-either:
+        - pattern: $_COOKIE[$KEY]
+      - pattern-inside: $wpdb->query($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+
+rules:
+- id: get_row_deep_exp
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $V = $_COOKIE[$KEY];
+          ...
+          $wpdb->get_row(<... $V ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... (int) $V ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... (int)$V ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... sprintf($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... esc_sql($V) ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... sprintf($V) ...>);
+    - pattern-not-inside: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->get_row(<... esc_sql($V) ...>);
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+
+- id: query_deep_exp
+  patterns:
+    - pattern-either:
+      - pattern: |
+          $V = $_COOKIE[$KEY];
+          ...
+          $wpdb->query(<... $V ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... (int) $V ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... intval($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... (int)$V ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... intval($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... sprintf($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... esc_sql($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... sprintf($V) ...>);
+    - pattern-not: |
+        $V = $_COOKIE[$KEY];
+        ...
+        $wpdb->query(<... esc_sql($V) ...>);
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+

@@ -1,0 +1,113 @@
+rules:
+- id: get_row_deep_exp
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_row(<... $V ...>);
+      - pattern: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_row(<... $V ...>);
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->get_row($wpdb->prepare(...));
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->get_row($wpdb->prepare(...));
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->get_row(<... (int) $V ...>);
+    - pattern-not: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->get_row(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->get_row(<... (int)$V ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->get_row(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->get_row(<... sprintf($V) ...>);
+    - pattern-not: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->get_row(<... esc_sql($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->get_row(<... sprintf($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->get_row(<... esc_sql($V) ...>);
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+
+- id: query_deep_exp
+  patterns:
+    - pattern-either:
+      - pattern: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->query(<... $V ...>);
+      - pattern: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->query(<... $V ...>);
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->query($wpdb->prepare(...));
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->query($wpdb->prepare(...));
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->query(<... (int) $V ...>);
+    - pattern-not: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->query(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->query(<... (int)$V ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->query(<... intval($V) ...>);
+    - pattern-not-inside: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->query(<... sprintf($V) ...>);
+    - pattern-not: |
+        $V = $_POST[$KEY];
+        ...
+        $wpdb->query(<... esc_sql($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->query(<... sprintf($V) ...>);
+    - pattern-not-inside: |
+        $V = $_GET[$KEY];
+        ...
+        $wpdb->query(<... esc_sql($V) ...>);
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+

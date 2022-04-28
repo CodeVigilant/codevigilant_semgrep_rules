@@ -1,0 +1,19 @@
+rules:
+- id: http_header_sqli
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_COOKIE[$KEY]
+        - pattern: $_SERVER[$KEY]
+      - pattern-inside: $wpdb->get_var($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING

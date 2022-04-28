@@ -1,0 +1,59 @@
+rules:
+- id: get_row_deep_exp
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $wpdb->get_row(<... $_GET[$KEY] ...>)
+      - pattern: |
+          $wpdb->get_row(<... $_POST[$KEY] ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... (int) $_POST[$KEY] ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... intval($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... sprintf($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... esc_sql($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... (int) $GET[$KEY] ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... intval($GET[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... sprintf($_GET[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->get_row(<... esc_sql($_GET[$KEY]) ...>)
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+
+- id: query_deep_expr
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $wpdb->query(<... $_GET[$KEY] ...>)
+      - pattern: |
+          $wpdb->query(<... $_POST[$KEY] ...>) 
+    - pattern-not: |
+        $wpdb->query(<... (int) $_POST[$KEY] ...>)
+    - pattern-not: |
+        $wpdb->query(<... intval($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->query(<... sprintf($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->query(<... esc_sql($_POST[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->query(<... (int) $GET[$KEY] ...>)
+    - pattern-not: |
+        $wpdb->query(<... intval($GET[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->query(<... sprintf($_GET[$KEY]) ...>)
+    - pattern-not: |
+        $wpdb->query(<... esc_sql($_GET[$KEY]) ...>)
+  languages: [php]
+  mode: search
+  message: Semgrep found a match
+  severity: WARNING
+
+
+

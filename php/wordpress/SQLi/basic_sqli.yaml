@@ -1,0 +1,53 @@
+rules:
+- id: basic_sqli_get_results
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+      - pattern-inside: $wpdb->get_results($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+- id: basic_sqli_get_row
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+      - pattern-inside: $wpdb->get_row($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+- id: basic_sqli_query
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+      - pattern-inside: $wpdb->query($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+  languages: [php]
+  mode: search
+  message: Look for basic SQL Injection
+  severity: WARNING
+
+
