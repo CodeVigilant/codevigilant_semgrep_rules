@@ -1,0 +1,45 @@
+rules:
+- id: ssrf-key-inside-file_get_contents
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: file_get_contents($X);
+  languages: [php]
+  mode: search
+  message: SSRF where $X in file_get_content. No filters. No multiple lines.
+  severity: INFO
+- id: ssrf-key-inside-fsockopen
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: fsockopen($X);
+  languages: [php]
+  mode: search
+  message: SSRF where key in fscokopen method
+  severity: INFO
+- id: ssrf-key-inside-curl_setopt
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: curl_setopt($X);
+  languages: [php]
+  mode: search
+  message: SSRF where key in curl_setopt
+  severity: INFO
+- id: ssrf-key-inside-curl_init
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: curl_init($X);
+  languages: [php]
+  mode: search
+  message: SSRF where key in curl_init 
+  severity: INFO

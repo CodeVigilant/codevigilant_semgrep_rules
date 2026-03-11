@@ -1,0 +1,16 @@
+rules:
+- id: rce-getPost-key-fileGetContents-eval
+  patterns:
+    - pattern-either:
+      - pattern: $_POST[$KEY]
+      - pattern: $_GET[$KEY]
+    - pattern-inside: |
+        $V = file_get_contents(<... $X ...>);
+        ...
+        <... eval($V) ...>;
+    - pattern-not-inside: |
+        $V = file_get_contents(esc_url(...));
+  message: GET/POST variable inside file_get_contents and further inside eval. Filters not included except esc_url. Multiple lines allowed.
+  languages: [php]
+  mode: search
+  severity: ERROR

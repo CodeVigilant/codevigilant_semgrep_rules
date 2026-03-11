@@ -1,0 +1,53 @@
+rules:
+- id: SSRF-key-substitution-and-called-inside-wp_remote_get
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_get(<... $V ...>);
+      - pattern: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_get(<... $V ...>);
+      - pattern: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_get(<... $V ...>);
+      - pattern: wp_remote_get($_GET[$KEY]);
+      - pattern: wp_remote_get($_POST[$KEY]);
+      - pattern: wp_remote_get($_REQUEST[$KEY]);
+      - pattern: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_post(<... $V ...>);
+      - pattern: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_post(<... $V ...>);
+      - pattern: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_post(<... $V ...>);
+      - pattern: wp_remote_post($_GET[$KEY]);
+      - pattern: wp_remote_post($_POST[$KEY]);
+      - pattern: wp_remote_post($_REQUEST[$KEY]);
+      - pattern: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_request(<... $V ...>);
+      - pattern: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_request(<... $V ...>);
+      - pattern: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_request(<... $V ...>);
+      - pattern: wp_remote_request($_GET[$KEY]);
+      - pattern: wp_remote_request($_POST[$KEY]);
+      - pattern: wp_remote_request($_REQUEST[$KEY]);
+  languages: [php]
+  mode: search
+  message: SSRF where GET/POST/REQUEST key is substituted to a variable and is used a parameter for wp_remote_request method. Multiple lines allowed. Filters excluded.
+  severity: INFO

@@ -1,0 +1,12 @@
+rules:
+- id: deserialization-using-unserialize
+  patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: unserialize($X);
+  languages: [php]
+  mode: search
+  message: Deserialize where GET/POST key is inside unserialize function. No filters included.
+  severity: INFO

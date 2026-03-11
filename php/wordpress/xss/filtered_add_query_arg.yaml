@@ -1,0 +1,128 @@
+rules:
+- id: xss-home_url-with_addQueryArg
+  patterns:
+    - pattern-either: 
+      - pattern: |
+          $V=home_url(add_query_arg($A,$B));
+          ...
+          echo <... $V ...>;
+      - pattern: |
+          $V= add_query_arg($A,$B);
+          ...
+          echo <... $V ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... esc_url($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... esc_url($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... esc_html($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... esc_html($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... esc_attr($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... esc_attr($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... wp_kses_post($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... wp_kses_post($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... wp_kses($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... wp_kses($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... esc_raw_url($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... esc_raw_url($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... wp_strip_all_tags($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... wp_strip_all_tags($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... htmlspecialchars($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... htmlspecialchars($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... htmlentities($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... htmlentities($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... esc_js($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... esc_js($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... strip_tags($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... strip_tags($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... empty($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... empty($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... isset($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... isset($V) ...>;
+    - pattern-not-inside: |
+        $V= add_query_arg($A,$B);
+        ...
+        echo <... sanitize_key($V) ...>;
+    - pattern-not-inside: |
+        $V=home_url(add_query_arg($A,$B));
+        ...
+        echo <... sprintf($V) ...>;
+  languages: [php]
+  mode: search
+  message: XSS where $V = home_url(add_query_arg($A,$B) is further echoed. Filters included and multiple lines allowed.
+  severity: INFO
