@@ -1,54 +1,62 @@
 rules:
-- id: xss-substitute-getPost-not-inside-filter
-  patterns:
-    - pattern-either: 
-      - pattern: |
-          $_GET[$KEY]
-      - pattern: |
-          $_POST[$KEY]
-      - pattern: |
-          $_REQUEST[$KEY]
-    - pattern-inside: |
-        $V = $X;
-        ...
-        echo $V;
-    - pattern-not-inside: |
-        $V = intval(...);
-    - pattern-not-inside: |
-        $V = esc_js(...);
-    - pattern-not-inside: |
-        $V = strip_tags(...);
-    - pattern-not-inside: |
-        $V = sanitize_text_field(...);
-    - pattern-not-inside: |
-        $V = wp_strip_all_tags(...);
-    - pattern-not-inside: |
-        $V = htmlspecialchars(...);
-    - pattern-not-inside: |
-        $V = htmlentities(...);
-    - pattern-not-inside: |
-        $V = isset(...);
-    - pattern-not-inside: |
-        $V = is_int(...);
-    - pattern-not-inside: |
-        $V = empty(...);
-    - pattern-not-inside: |
-        $V = esc_html(...);
-    - pattern-not-inside: |
-        $V = esc_raw_url(...);
-    - pattern-not-inside: |
-        $V = esc_textarea(...);
-    - pattern-not-inside: |
-        $V = esc_attr(...);
-    - pattern-not-inside: |
-        $V = absint(...);
-    - pattern-not-inside: |
-        $V = wp_kses(...);
-    - pattern-not-inside: |
-        $V = wp_kses_post(...);
-    - pattern-not-inside: |
-        $V = sanitize_key(...);
-  languages: [php]
-  mode: search
-  message: Substitute GET/POST to a variable but substituion should not be inside a filter. Multiple lines allowed and echoed.
-  severity: ERROR
+  - id: codevigilant.php.wordpress.xss.getpost.variable.taint
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: |
+          $V = $X;
+          ...
+          echo $V;
+      - pattern-not-inside: |
+          $V = intval(...);
+      - pattern-not-inside: |
+          $V = esc_js(...);
+      - pattern-not-inside: |
+          $V = strip_tags(...);
+      - pattern-not-inside: |
+          $V = sanitize_text_field(...);
+      - pattern-not-inside: |
+          $V = wp_strip_all_tags(...);
+      - pattern-not-inside: |
+          $V = htmlspecialchars(...);
+      - pattern-not-inside: |
+          $V = htmlentities(...);
+      - pattern-not-inside: |
+          $V = isset(...);
+      - pattern-not-inside: |
+          $V = is_int(...);
+      - pattern-not-inside: |
+          $V = empty(...);
+      - pattern-not-inside: |
+          $V = esc_html(...);
+      - pattern-not-inside: |
+          $V = esc_url_raw(...);
+      - pattern-not-inside: |
+          $V = esc_textarea(...);
+      - pattern-not-inside: |
+          $V = esc_attr(...);
+      - pattern-not-inside: |
+          $V = absint(...);
+      - pattern-not-inside: |
+          $V = wp_kses(...);
+      - pattern-not-inside: |
+          $V = wp_kses_post(...);
+      - pattern-not-inside: |
+          $V = sanitize_key(...);
+    message: |
+      Detected XSS vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later echoed without sanitization.
+      Use esc_html(), esc_attr(), or wp_kses() to properly escape output.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

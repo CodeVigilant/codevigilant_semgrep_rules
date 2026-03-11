@@ -1,12 +1,24 @@
 rules:
-- id: deserialization-using-unserialize
-  patterns:
+  - id: codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+    patterns:
       - pattern-either:
         - pattern: $_GET[$KEY]
         - pattern: $_POST[$KEY]
         - pattern: $_REQUEST[$KEY]
       - pattern-inside: unserialize($X);
-  languages: [php]
-  mode: search
-  message: Deserialize where GET/POST key is inside unserialize function. No filters included.
-  severity: INFO
+    message: |
+      Detected insecure deserialization vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly passed to unserialize() without validation.
+      This can lead to remote code execution through object injection. Use json_decode() instead of unserialize() for user input.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2017 - Insecure Deserialization"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+    languages: [php]
+    mode: search
+    severity: HIGH

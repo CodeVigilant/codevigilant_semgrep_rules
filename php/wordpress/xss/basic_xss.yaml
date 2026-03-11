@@ -1,6 +1,6 @@
 rules:
-- id: xss-echo-getPost-variable-direct
-  patterns:
+  - id: codevigilant.php.wordpress.xss.getpost.echo.direct
+    patterns:
       - pattern-either:
         - pattern: $_GET[$KEY]
         - pattern: $_POST[$KEY]
@@ -26,7 +26,18 @@ rules:
       - pattern-not-inside: wp_kses_post(...)
       - pattern-not-inside: sanitize_key(...)
       - pattern-not-inside: rawurlencode(...)
-  languages: [php]
-  mode: search
-  message: GET/POST key is directly used inside echo statement. Filters included in exclusions.
-  severity: WARNING
+    message: |
+      Detected XSS vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly echoed without sanitization.
+      Use esc_html(), esc_attr(), or wp_kses() to properly escape output.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

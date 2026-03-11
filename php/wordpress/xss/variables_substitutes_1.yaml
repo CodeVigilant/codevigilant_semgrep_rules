@@ -1,168 +1,179 @@
 rules:
-- id: xss-substitute-get-post-variable-multiple-lines-allowed
-  patterns:
-    - pattern-either: 
-      - pattern: |
+  - id: codevigilant.php.wordpress.xss.getpost.variable.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            echo <... $V ...>;
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            echo <... $V ...>;
+      - pattern-not-inside: |
           $V = $_GET[$KEY];
           ...
-          echo <... $V ...>;
-      - pattern: |
+          echo <... (int) $V ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... esc_js($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... intval($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... strip_tags($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... sanitize_text_field($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... wp_strip_all_tags($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... htmlspecialchars($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... htmlentities($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... isset($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... is_int($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... empty($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... esc_html($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... esc_url_raw($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... esc_textarea($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... esc_attr($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... absint($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... wp_kses($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... wp_kses_post($V) ...>;
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          echo <... sanitize_key($V) ...>;
+      - pattern-not-inside: |
           $V = $_POST[$KEY];
           ...
-          echo <... $V ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... (int) $V ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... esc_js($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... intval($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... strip_tags($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... sanitize_text_fields($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... wp_strip_all_tags($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... htmlspecialchars($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... htmlentities($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... isset($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... is_int($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... empty($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... esc_html($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... esc_raw_url($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... esc_textarea($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... esc_attr($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... absint($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... wp_kses($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... wp_kses_post($V) ...>;
-    - pattern-not-inside: |
-        $V = $_GET[$KEY];
-        ...
-        echo <... sanitize_key($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... (int) $V ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... esc_js($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... intval($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... strip_tags($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... sanitize_text_fields($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... wp_strip_all_tags($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... htmlspecialchars($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... htmlentities($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... isset($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... is_int($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... empty($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... esc_html($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... esc_raw_url($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... esc_textarea($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... esc_attr($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... absint($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... wp_kses($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... wp_kses_post($V) ...>;
-    - pattern-not-inside: |
-        $V = $_POST[$KEY];
-        ...
-        echo <... sanitize_key($V) ...>;
-  languages: [php]
-  mode: search
-  message: Look for $_GET[KEY]/ $_POST[KEY] substituted to a variable and echoed. Multiple lines allowed. Filters included in scan.
-  severity: WARNING
+          echo <... (int) $V ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... esc_js($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... intval($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... strip_tags($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... sanitize_text_field($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... wp_strip_all_tags($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... htmlspecialchars($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... htmlentities($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... isset($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... is_int($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... empty($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... esc_html($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... esc_url_raw($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... esc_textarea($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... esc_attr($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... absint($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... wp_kses($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... wp_kses_post($V) ...>;
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          echo <... sanitize_key($V) ...>;
+    message: |
+      Detected XSS vulnerability in WordPress.
+      User input from $_GET or $_POST is assigned to a variable and later echoed without sanitization.
+      Use esc_html(), esc_attr(), or wp_kses() to properly escape output.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

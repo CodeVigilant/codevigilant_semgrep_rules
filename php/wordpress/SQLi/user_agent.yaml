@@ -1,0 +1,156 @@
+rules:
+  # Direct taint patterns - User-Agent header directly in SQL methods
+  - id: codevigilant.php.wordpress.sqli.user_agent.get_results.direct
+    patterns:
+      - pattern: $_SERVER['HTTP_USER_AGENT']
+      - pattern-inside: $wpdb->get_results($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      The User-Agent header ($_SERVER['HTTP_USER_AGENT']) is directly used in $wpdb->get_results() without sanitization.
+      User-Agent headers can be easily manipulated by attackers. Use $wpdb->prepare() to properly escape the query.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.user_agent.get_row.direct
+    patterns:
+      - pattern: $_SERVER['HTTP_USER_AGENT']
+      - pattern-inside: $wpdb->get_row($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      The User-Agent header ($_SERVER['HTTP_USER_AGENT']) is directly used in $wpdb->get_row() without sanitization.
+      User-Agent headers can be easily manipulated by attackers. Use $wpdb->prepare() to properly escape the query.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.user_agent.query.direct
+    patterns:
+      - pattern: $_SERVER['HTTP_USER_AGENT']
+      - pattern-inside: $wpdb->query($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      The User-Agent header ($_SERVER['HTTP_USER_AGENT']) is directly used in $wpdb->query() without sanitization.
+      User-Agent headers can be easily manipulated by attackers. Use $wpdb->prepare() to properly escape the query.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  # Deep taint patterns - variable assignment before SQL usage
+  - id: codevigilant.php.wordpress.sqli.user_agent.get_row.deep_taint
+    patterns:
+      - pattern: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->get_row(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->get_row(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->get_row(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->get_row(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->get_row(<... esc_sql($V) ...>);
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      The User-Agent header is assigned to a variable and later used in $wpdb->get_row() without sanitization.
+      User-Agent headers can be easily manipulated by attackers. Use $wpdb->prepare() or esc_sql() to properly sanitize.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.user_agent.query.deep_taint
+    patterns:
+      - pattern: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->query(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->query(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->query(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->query(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_SERVER['HTTP_USER_AGENT'];
+          ...
+          $wpdb->query(<... esc_sql($V) ...>);
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      The User-Agent header is assigned to a variable and later used in $wpdb->query() without sanitization.
+      User-Agent headers can be easily manipulated by attackers. Use $wpdb->prepare() or esc_sql() to properly sanitize.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH

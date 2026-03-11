@@ -1,53 +1,105 @@
 rules:
-- id: SSRF-key-substitution-and-called-inside-wp_remote_get
-  patterns:
-    - pattern-either: 
-      - pattern: |
-          $V = $_GET[$KEY];
-          ...
-          wp_remote_get(<... $V ...>);
-      - pattern: |
-          $V = $_POST[$KEY];
-          ...
-          wp_remote_get(<... $V ...>);
-      - pattern: |
-          $V = $_REQUEST[$KEY];
-          ...
-          wp_remote_get(<... $V ...>);
-      - pattern: wp_remote_get($_GET[$KEY]);
-      - pattern: wp_remote_get($_POST[$KEY]);
-      - pattern: wp_remote_get($_REQUEST[$KEY]);
-      - pattern: |
-          $V = $_GET[$KEY];
-          ...
-          wp_remote_post(<... $V ...>);
-      - pattern: |
-          $V = $_POST[$KEY];
-          ...
-          wp_remote_post(<... $V ...>);
-      - pattern: |
-          $V = $_REQUEST[$KEY];
-          ...
-          wp_remote_post(<... $V ...>);
-      - pattern: wp_remote_post($_GET[$KEY]);
-      - pattern: wp_remote_post($_POST[$KEY]);
-      - pattern: wp_remote_post($_REQUEST[$KEY]);
-      - pattern: |
-          $V = $_GET[$KEY];
-          ...
-          wp_remote_request(<... $V ...>);
-      - pattern: |
-          $V = $_POST[$KEY];
-          ...
-          wp_remote_request(<... $V ...>);
-      - pattern: |
-          $V = $_REQUEST[$KEY];
-          ...
-          wp_remote_request(<... $V ...>);
-      - pattern: wp_remote_request($_GET[$KEY]);
-      - pattern: wp_remote_request($_POST[$KEY]);
-      - pattern: wp_remote_request($_REQUEST[$KEY]);
-  languages: [php]
-  mode: search
-  message: SSRF where GET/POST/REQUEST key is substituted to a variable and is used a parameter for wp_remote_request method. Multiple lines allowed. Filters excluded.
-  severity: INFO
+  - id: codevigilant.php.wordpress.ssrf.getpost.file_get_contents.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: file_get_contents($X);
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: filter_var(...)
+      - pattern-not-inside: wp_http_validate_url(...)
+    message: |
+      Detected SSRF vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in file_get_contents() without sanitization.
+      Use wp_http_validate_url() or esc_url() to validate URLs before use.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.ssrf.getpost.fsockopen.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: fsockopen($X);
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: filter_var(...)
+    message: |
+      Detected SSRF vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in fsockopen() without sanitization.
+      Validate and sanitize hostnames before establishing socket connections.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.ssrf.getpost.curl_setopt.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: curl_setopt($X);
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: filter_var(...)
+    message: |
+      Detected SSRF vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in curl_setopt() without sanitization.
+      Validate URLs before setting cURL options.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.ssrf.getpost.curl_init.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: curl_init($X);
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: filter_var(...)
+    message: |
+      Detected SSRF vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in curl_init() without sanitization.
+      Validate URLs before initializing cURL sessions.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

@@ -1,45 +1,106 @@
 rules:
-- id: ssrf-key-inside-file_get_contents
-  patterns:
+  - id: codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
+    patterns:
       - pattern-either:
-        - pattern: $_GET[$KEY]
-        - pattern: $_POST[$KEY]
-        - pattern: $_REQUEST[$KEY]
-      - pattern-inside: file_get_contents($X);
-  languages: [php]
-  mode: search
-  message: SSRF where $X in file_get_content. No filters. No multiple lines.
-  severity: INFO
-- id: ssrf-key-inside-fsockopen
-  patterns:
-      - pattern-either:
-        - pattern: $_GET[$KEY]
-        - pattern: $_POST[$KEY]
-        - pattern: $_REQUEST[$KEY]
-      - pattern-inside: fsockopen($X);
-  languages: [php]
-  mode: search
-  message: SSRF where key in fscokopen method
-  severity: INFO
-- id: ssrf-key-inside-curl_setopt
-  patterns:
-      - pattern-either:
-        - pattern: $_GET[$KEY]
-        - pattern: $_POST[$KEY]
-        - pattern: $_REQUEST[$KEY]
-      - pattern-inside: curl_setopt($X);
-  languages: [php]
-  mode: search
-  message: SSRF where key in curl_setopt
-  severity: INFO
-- id: ssrf-key-inside-curl_init
-  patterns:
-      - pattern-either:
-        - pattern: $_GET[$KEY]
-        - pattern: $_POST[$KEY]
-        - pattern: $_REQUEST[$KEY]
-      - pattern-inside: curl_init($X);
-  languages: [php]
-  mode: search
-  message: SSRF where key in curl_init 
-  severity: INFO
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            wp_remote_get(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            wp_remote_get(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            wp_remote_get(<... $V ...>);
+        - pattern: wp_remote_get($_GET[$KEY]);
+        - pattern: wp_remote_get($_POST[$KEY]);
+        - pattern: wp_remote_get($_REQUEST[$KEY]);
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            wp_remote_post(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            wp_remote_post(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            wp_remote_post(<... $V ...>);
+        - pattern: wp_remote_post($_GET[$KEY]);
+        - pattern: wp_remote_post($_POST[$KEY]);
+        - pattern: wp_remote_post($_REQUEST[$KEY]);
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            wp_remote_request(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            wp_remote_request(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            wp_remote_request(<... $V ...>);
+        - pattern: wp_remote_request($_GET[$KEY]);
+        - pattern: wp_remote_request($_POST[$KEY]);
+        - pattern: wp_remote_request($_REQUEST[$KEY]);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_get(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_get(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_get(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_post(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_post(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_post(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          wp_remote_request(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          wp_remote_request(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          wp_remote_request(<... esc_url($V) ...>);
+      - pattern-not-inside: wp_remote_get(<... esc_url(...) ...>);
+      - pattern-not-inside: wp_remote_post(<... esc_url(...) ...>);
+      - pattern-not-inside: wp_remote_request(<... esc_url(...) ...>);
+      - pattern-not-inside: wp_remote_get(<... esc_url_raw(...) ...>);
+      - pattern-not-inside: wp_remote_post(<... esc_url_raw(...) ...>);
+      - pattern-not-inside: wp_remote_request(<... esc_url_raw(...) ...>);
+    message: |
+      Detected SSRF vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is used in wp_remote_* functions without sanitization.
+      Use esc_url() or wp_http_validate_url() to validate URLs before making remote requests.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

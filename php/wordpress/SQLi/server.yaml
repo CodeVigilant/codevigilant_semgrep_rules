@@ -1,0 +1,27 @@
+rules:
+  # Direct taint patterns - $_SERVER input directly in SQL methods
+  - id: codevigilant.php.wordpress.sqli.server.get_var.direct
+    patterns:
+      - pattern: $_SERVER[$KEY]
+      - pattern-inside: $wpdb->get_var($X);
+      - pattern-not-inside: $wpdb->prepare(...)
+      - pattern-not-inside: $wpdb->escape(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: sprintf(...)
+      - pattern-not-inside: esc_sql(...)
+      - pattern-not-inside: rawurlencode(...)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      User input from $_SERVER is directly used in $wpdb->get_var() without sanitization.
+      Use $wpdb->prepare() to properly escape the query. Server variables can be manipulated by attackers.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH

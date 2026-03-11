@@ -1,16 +1,29 @@
 rules:
-- id: rce-getPost-key-fileGetContents-eval
-  patterns:
-    - pattern-either:
-      - pattern: $_POST[$KEY]
-      - pattern: $_GET[$KEY]
-    - pattern-inside: |
-        $V = file_get_contents(<... $X ...>);
-        ...
-        <... eval($V) ...>;
-    - pattern-not-inside: |
-        $V = file_get_contents(esc_url(...));
-  message: GET/POST variable inside file_get_contents and further inside eval. Filters not included except esc_url. Multiple lines allowed.
-  languages: [php]
-  mode: search
-  severity: ERROR
+  - id: codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
+    patterns:
+      - pattern-either:
+        - pattern: $_POST[$KEY]
+        - pattern: $_GET[$KEY]
+      - pattern-inside: |
+          $V = file_get_contents(<... $X ...>);
+          ...
+          <... eval($V) ...>;
+      - pattern-not-inside: |
+          $V = file_get_contents(esc_url(...));
+      - pattern-not-inside: |
+          $V = file_get_contents(esc_url_raw(...));
+    message: |
+      Detected RCE vulnerability in WordPress.
+      User input from $_GET or $_POST flows through file_get_contents() to eval(), creating a remote code execution risk.
+      This is a critical vulnerability. Never use eval() with user-controlled content. Use wp_remote_get() with proper validation.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: CRITICAL
