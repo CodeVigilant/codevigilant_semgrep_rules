@@ -1,0 +1,95 @@
+rules:
+  # ============================================================================
+  # POSIX FUNCTIONS SECURITY RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/POSIXFunctionsSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.security.posix_functions.discouraged
+    message: "POSIX functions are discouraged. Use WordPress/PHP alternatives instead for better portability and security."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: posix_kill(...)
+          - pattern: posix_mkfifo(...)
+          - pattern: posix_setpgid(...)
+          - pattern: posix_setsid(...)
+          - pattern: posix_setuid(...)
+          - pattern: posix_setgid(...)
+          - pattern: posix_seteuid(...)
+          - pattern: posix_setegid(...)
+          - pattern: posix_getpwnam(...)
+          - pattern: posix_getgrnam(...)
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment for Critical Resource"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/book.posix.php
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/POSIXFunctionsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.security.posix_functions.process_control
+    message: "POSIX process control functions can lead to privilege escalation or DoS. Avoid in web contexts."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: posix_kill($...PID, $...SIG)
+          - pattern: posix_setuid($...UID)
+          - pattern: posix_setgid($...GID)
+          - pattern: posix_seteuid($...UID)
+          - pattern: posix_setegid($...GID)
+    metadata:
+      category: security
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.posix-setuid.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.security.posix_functions.file_creation
+    message: "posix_mkfifo() can create special files that may be exploited. Avoid in web applications."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: posix_mkfifo($...PATH, $...MODE)
+    metadata:
+      category: security
+      cwe: "CWE-276: Incorrect Default Permissions"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.posix-mkfifo.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.security.posix_functions.info_disclosure
+    message: "POSIX user/group functions can leak system information. Avoid exposing system user details."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: posix_getpwnam($...NAME)
+          - pattern: posix_getpwuid($...UID)
+          - pattern: posix_getgrnam($...NAME)
+          - pattern: posix_getgrgid($...GID)
+          - pattern: posix_getlogin()
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.posix-getpwnam.php
+      source: WordPress-Coding-Standards
+      license: MIT

@@ -1,0 +1,78 @@
+rules:
+  # ============================================================================
+  # RESTRICTED VARIABLES AND CONSTANTS
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Variables/RestrictedVariablesSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Variables/ServerVariablesSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Constants/RestrictedConstantsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.xss.server_request_uri
+    message: "$_SERVER['REQUEST_URI'] is user-controlled and must be escaped before output."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: echo $_SERVER['REQUEST_URI'];
+          - pattern: print $_SERVER['REQUEST_URI'];
+          - pattern: echo $...VAR . $_SERVER['REQUEST_URI'];
+      - pattern-not: echo esc_html($_SERVER['REQUEST_URI']);
+      - pattern-not: echo esc_attr($_SERVER['REQUEST_URI']);
+      - pattern-not: echo esc_url($_SERVER['REQUEST_URI']);
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Variables/ServerVariablesSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.server_http_host
+    message: "$_SERVER['HTTP_HOST'] can be spoofed by the user and must be validated before use."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: $_SERVER['HTTP_HOST']
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.server_php_self
+    message: "$_SERVER['PHP_SELF'] can contain XSS payloads and must be escaped before output."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: echo $_SERVER['PHP_SELF'];
+          - pattern: print $_SERVER['PHP_SELF'];
+          - pattern: echo $_SERVER['SCRIPT_NAME'];
+          - pattern: print $_SERVER['SCRIPT_NAME'];
+      - pattern-not: echo esc_html($_SERVER['PHP_SELF']);
+      - pattern-not: echo esc_attr($_SERVER['PHP_SELF']);
+      - pattern-not: echo esc_url($_SERVER['PHP_SELF']);
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  # Note: Removed injection.globals_variable rule due to Semgrep pattern limitation
+  # The pattern $GLOBALS[...] is interpreted as a metavariable, causing false positives
+  # on ALL variables (e.g., $settings, $post_types, $matches, etc.)
+  # To properly match PHP's $GLOBALS superglobal, we would need a different approach

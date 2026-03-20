@@ -1,0 +1,81 @@
+rules:
+  # ============================================================================
+  # TEMPLATE INJECTION RULES
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/MustacheSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/UnderscorejsSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/VuejsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.xss.mustache_unescaped
+    message: "Mustache unescaped variable output detected. Using triple braces {{{}}} or & syntax can lead to XSS."
+    severity: ERROR
+    languages: [generic]
+    patterns:
+      - pattern-either:
+          - pattern: "{{{ ... }}}"
+          - pattern: "{{& ... }}"
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: mustache
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/MustacheSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.underscore_unescaped
+    message: "Underscore.js unescaped variable output detected. Using <%- ... %> can lead to XSS. Use <%= ... %> instead."
+    severity: ERROR
+    languages: [generic]
+    patterns:
+      - pattern: "<%- ... %>"
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: underscore.js
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/UnderscorejsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.vue_v_html
+    message: "Vue.js v-html directive can lead to XSS. Only use v-html with sanitized/trusted content."
+    severity: ERROR
+    languages: [generic]
+    patterns:
+      - pattern: "v-html=..."
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: vue.js
+      confidence: HIGH
+      references:
+        - https://vuejs.org/api/built-in-directives.html#v-html
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/VuejsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.vue_dangerous_mustache
+    message: "Vue.js template with potentially dangerous unescaped interpolation. Vue templates escape by default with {{ }}, but verify the context."
+    severity: WARNING
+    languages: [generic]
+    patterns:
+      - pattern: "{{ ... }}"
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: vue.js
+      confidence: LOW
+      references:
+        - https://vuejs.org/guide/essentials/template-syntax.html
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

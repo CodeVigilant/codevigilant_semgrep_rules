@@ -1,0 +1,94 @@
+rules:
+  # ============================================================================
+  # DEVELOPMENT FUNCTIONS (Info Disclosure)
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/DevelopmentFunctionsSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.info_disclosure.var_dump
+    message: "var_dump() exposes variable contents and should not be used in production code."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: var_dump(...)
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.var-dump.php
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/DevelopmentFunctionsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.info_disclosure.print_r
+    message: "print_r() exposes variable contents and should not be used in production code."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: print_r(...)
+      - pattern-not: print_r(..., true)
+    metadata:
+      category: security
+      cwe: "CWE-200"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.print-r.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.info_disclosure.debug_backtrace
+    message: "debug_backtrace() exposes application internals and should not be used in production."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: debug_backtrace(...)
+    metadata:
+      category: security
+      cwe: "CWE-200"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.debug-backtrace.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.info_disclosure.debug_print_backtrace
+    message: "debug_print_backtrace() exposes application internals and should not be used in production."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: debug_print_backtrace(...)
+    metadata:
+      category: security
+      cwe: "CWE-200"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.debug-print-backtrace.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.info_disclosure.var_export
+    message: "var_export() can expose variable contents. Use with return parameter or avoid in production."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: var_export(...)
+      - pattern-not: var_export(..., true)
+    metadata:
+      category: security
+      cwe: "CWE-200"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.var-export.php
+      source: WordPress-Coding-Standards
+      license: MIT

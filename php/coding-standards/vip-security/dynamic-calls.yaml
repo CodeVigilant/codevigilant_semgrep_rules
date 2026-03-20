@@ -1,0 +1,54 @@
+rules:
+  # ============================================================================
+  # DYNAMIC FUNCTION CALLS
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Functions/DynamicCallsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.rce.dynamic_function_call
+    message: "Dynamic function calls with user-controlled input can lead to Remote Code Execution. Validate or whitelist allowed functions."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: |
+          $...VAR = $_GET[...];
+          ...
+          $...VAR(...);
+      - pattern: |
+          $...VAR = $_POST[...];
+          ...
+          $...VAR(...);
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Functions/DynamicCallsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.rce.call_user_func_user_input
+    message: "call_user_func() or call_user_func_array() with user-controlled function name can lead to RCE. Validate or whitelist allowed functions."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: call_user_func($_GET[...], ...)
+          - pattern: call_user_func($_POST[...], ...)
+          - pattern: call_user_func_array($_GET[...], ...)
+          - pattern: call_user_func_array($_POST[...], ...)
+          - pattern: call_user_func($...VAR, ...)
+          - pattern: call_user_func_array($...VAR, ...)
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.call-user-func.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

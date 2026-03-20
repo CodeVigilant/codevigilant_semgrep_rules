@@ -1,0 +1,89 @@
+rules:
+  # ============================================================================
+  # STR_REPLACE SANITIZATION RULES
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Functions/StaticStrreplaceSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.xss.str_replace_xss_attempt
+    message: "Attempting to remove specific XSS tags with str_replace() is insufficient. Use wp_kses() or esc_html() instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: str_replace("<script>", "", ...)
+          - pattern: str_replace('<script>', "", ...)
+          - pattern: str_replace("<iframe>", "", ...)
+          - pattern: str_replace('<iframe>', "", ...)
+          - pattern: str_replace("<object>", "", ...)
+          - pattern: str_replace('<object>', "", ...)
+          - pattern: str_replace("javascript:", "", ...)
+          - pattern: str_replace('javascript:', "", ...)
+          - pattern: str_replace("onerror", "", ...)
+          - pattern: str_replace('onerror', "", ...)
+          - pattern: str_replace("onclick", "", ...)
+          - pattern: str_replace('onclick', "", ...)
+          - pattern: str_replace("onload", "", ...)
+          - pattern: str_replace('onload', "", ...)
+          - pattern: str_replace("onmouseover", "", ...)
+          - pattern: str_replace('onmouseover', "", ...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Functions/StaticStrreplaceSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.sqli.str_replace_sql_attempt
+    message: "Attempting to filter SQL injection with str_replace() is insufficient. Use $wpdb->prepare() or esc_sql() instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: str_replace("'", "", ...)
+          - pattern: str_replace('"', "", ...)
+          - pattern: str_replace("--", "", ...)
+          - pattern: str_replace(";", "", ...)
+          - pattern: str_replace("UNION", "", ...)
+          - pattern: str_replace("SELECT", "", ...)
+          - pattern: str_replace("DROP", "", ...)
+          - pattern: str_replace("INSERT", "", ...)
+          - pattern: str_replace("DELETE", "", ...)
+          - pattern: str_replace("UPDATE", "", ...)
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/prepare/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Functions/StaticStrreplaceSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.xss.preg_replace_xss_attempt
+    message: "Attempting to strip tags with preg_replace() can be bypassed. Use wp_kses() or esc_html() instead."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: preg_replace("/<script.*?>/i", "", ...)
+          - pattern: preg_replace('/<script.*?>/i', "", ...)
+          - pattern: preg_replace("/<.*?>/s", "", ...)
+          - pattern: preg_replace('/<.*?>/s', "", ...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

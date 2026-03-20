@@ -1,0 +1,113 @@
+rules:
+  # ============================================================================
+  # DENIAL OF SERVICE / PERFORMANCE RULES
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Performance/OrderByRandSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Performance/NoPagingSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Performance/RemoteRequestTimeoutSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.dos.orderby_rand
+    message: "ORDER BY RAND() is extremely slow on large tables and can cause DoS. Use vip_get_random_posts() or alternative methods."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: array(..., 'orderby' => 'rand', ...)
+          - pattern: array(..., "orderby" => "rand", ...)
+          - pattern: $wpdb->query("...ORDER BY RAND...")
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Performance/OrderByRandSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.dos.no_paging_posts_per_page
+    message: "High posts_per_page or nopaging => true can cause DoS on large datasets. Limit queries to reasonable page sizes."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: array(..., 'posts_per_page' => -1, ...)
+          - pattern: array(..., "posts_per_page" => -1, ...)
+          - pattern: array(..., 'nopaging' => true, ...)
+          - pattern: array(..., "nopaging" => true, ...)
+          - pattern: array(..., 'numberposts' => -1, ...)
+          - pattern: array(..., "numberposts" => -1, ...)
+    metadata:
+      category: security
+      cwe: "CWE-400"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Performance/NoPagingSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.dos.high_posts_per_page
+    message: "Very high posts_per_page value can cause memory issues. Consider pagination or limiting to <= 100."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: array(..., 'posts_per_page' => 1000, ...)
+          - pattern: array(..., 'posts_per_page' => 500, ...)
+    metadata:
+      category: security
+      cwe: "CWE-400"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.dos.remote_request_timeout
+    message: "High timeout values in remote requests can cause DoS. Keep timeouts reasonable (default is 5 seconds)."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: wp_remote_get(..., array(..., 'timeout' => 60, ...))
+          - pattern: wp_remote_post(..., array(..., 'timeout' => 60, ...))
+          - pattern: wp_remote_request(..., array(..., 'timeout' => 60, ...))
+          - pattern: array(..., 'timeout' => 30, ...)
+          - pattern: array(..., 'timeout' => 60, ...)
+    metadata:
+      category: security
+      cwe: "CWE-400"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Performance/RemoteRequestTimeoutSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.dos.get_posts_uncached
+    message: "get_posts() is uncached by default. Set 'suppress_filters' => false to enable caching."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: get_posts($...ARGS)
+      - pattern-not: get_posts(array(..., 'suppress_filters' => false, ...))
+    metadata:
+      category: security
+      cwe: "CWE-400"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

@@ -1,0 +1,54 @@
+rules:
+  # ============================================================================
+  # EXIT AFTER REDIRECT RULES
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/ExitAfterRedirectSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.redirect.exit_missing
+    message: "Missing exit/die after redirect. Code execution continues after wp_redirect() unless exit is called."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              wp_redirect(...);
+              ...
+          - pattern: |
+              wp_safe_redirect(...);
+              ...
+      - pattern-not: |
+          wp_redirect(...);
+          exit;
+      - pattern-not: |
+          wp_redirect(...);
+          exit();
+      - pattern-not: |
+          wp_redirect(...);
+          die;
+      - pattern-not: |
+          wp_redirect(...);
+          die();
+      - pattern-not: |
+          wp_safe_redirect(...);
+          exit;
+      - pattern-not: |
+          wp_safe_redirect(...);
+          exit();
+      - pattern-not: |
+          wp_safe_redirect(...);
+          die;
+      - pattern-not: |
+          wp_safe_redirect(...);
+          die();
+    metadata:
+      category: security
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/ExitAfterRedirectSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

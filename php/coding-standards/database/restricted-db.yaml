@@ -1,0 +1,52 @@
+rules:
+  # ============================================================================
+  # RESTRICTED DATABASE FUNCTIONS/CLASSES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/DB/RestrictedFunctionsSniff.php
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/DB/RestrictedClassesSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.sqli.mysqli_direct
+    message: "Use $wpdb methods instead of direct mysqli_* functions for better WordPress integration and security."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: mysqli_query(...)
+          - pattern: mysqli_connect(...)
+          - pattern: mysqli_real_escape_string(...)
+          - pattern: mysqli_fetch_array(...)
+          - pattern: mysqli_fetch_assoc(...)
+          - pattern: mysqli_prepare(...)
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/DB/RestrictedFunctionsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.sqli.pdo_direct
+    message: "Use $wpdb methods instead of direct PDO for WordPress database operations."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: new PDO(...)
+          - pattern: $...VAR->prepare(...)
+          - pattern: $...VAR->query(...)
+          - pattern: $...VAR->exec(...)
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/
+      source: WordPress-Coding-Standards
+      license: MIT

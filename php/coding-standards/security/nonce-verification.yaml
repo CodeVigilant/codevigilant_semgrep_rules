@@ -1,0 +1,90 @@
+rules:
+  # ============================================================================
+  # NONCE VERIFICATION RULES (CSRF Prevention)
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/Security/NonceVerificationSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.csrf.nonce.missing_post
+    message: "Form processing detected without nonce verification. Use wp_verify_nonce() or check_admin_referer() to prevent CSRF attacks."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ( isset($_POST[...]) ) { ... }
+          - pattern: |
+              if ( !empty($_POST[...]) ) { ... }
+          - pattern: |
+              if ( $_POST[...] ) { ... }
+      - pattern-not-inside: |
+          if ( wp_verify_nonce(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_admin_referer(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_ajax_referer(...) ) { ... }
+      - pattern-not-inside: |
+          wp_verify_nonce(...);
+          ...
+      - pattern-not-inside: |
+          check_admin_referer(...);
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-352: Cross-Site Request Forgery (CSRF)"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/Security/NonceVerificationSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.csrf.nonce.missing_get
+    message: "Processing $_GET data without nonce verification. Use wp_verify_nonce() to prevent CSRF attacks."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ( isset($_GET[...]) ) { ... }
+          - pattern: |
+              if ( !empty($_GET[...]) ) { ... }
+      - pattern-not-inside: |
+          if ( wp_verify_nonce(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_admin_referer(...) ) { ... }
+      - pattern-not-inside: |
+          wp_verify_nonce(...);
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-352"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/apis/security/nonces/
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.csrf.nonce.verification_before_processing
+    message: "Nonce verification should happen before processing form data. Move nonce check before accessing $_POST data."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: |
+          $VAR = $_POST[...];
+          ...
+          if ( wp_verify_nonce(...) ) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-352"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/nonces/
+      source: WordPress-Coding-Standards
+      license: MIT

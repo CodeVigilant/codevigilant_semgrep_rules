@@ -1,0 +1,126 @@
+rules:
+  # ============================================================================
+  # INPUT VALIDATION RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/Security/ValidatedSanitizedInputSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.validation.superglobal.not_validated
+    message: "Detected usage of a possibly undefined superglobal array index. Check that the array index exists before using it (use isset() or empty())."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: $VAL = $_GET[$KEY];
+          - pattern: $VAL = $_POST[$KEY];
+          - pattern: $VAL = $_REQUEST[$KEY];
+          - pattern: $VAL = $_COOKIE[$KEY];
+          - pattern: $_GET[$KEY]
+          - pattern: $_POST[$KEY]
+          - pattern: $_REQUEST[$KEY]
+          - pattern: $_COOKIE[$KEY]
+      - pattern-not-inside: |
+          if (isset(...)) { ... }
+      - pattern-not-inside: |
+          if (empty(...)) { ... }
+      - pattern-not: isset($_GET[...])
+      - pattern-not: isset($_POST[...])
+      - pattern-not: isset($_REQUEST[...])
+      - pattern-not: isset($_COOKIE[...])
+      - pattern-not: empty($_GET[...])
+      - pattern-not: empty($_POST[...])
+    metadata:
+      category: security
+      cwe: "CWE-129: Improper Validation of Array Index"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/Security/ValidatedSanitizedInputSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.validation.superglobal.not_sanitized
+    message: "Detected usage of a non-sanitized input variable. Sanitize input before use."
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+              - pattern: $_SERVER[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $wpdb->query($...VAR)
+              - pattern: $wpdb->get_results($...VAR)
+              - pattern: $wpdb->get_var($...VAR)
+              - pattern: $wpdb->get_row($...VAR)
+              - pattern: $wpdb->get_col($...VAR)
+              - pattern: $wpdb->prepare($...VAR, ...)
+              - pattern: echo $...VAR;
+              - pattern: print $...VAR;
+              - pattern: include $...VAR;
+              - pattern: require $...VAR;
+              - pattern: file_get_contents($...VAR)
+              - pattern: shell_exec($...VAR)
+              - pattern: exec($...VAR)
+              - pattern: system($...VAR)
+              - pattern: eval($...VAR)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_email(...)
+              - pattern: sanitize_url(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_title(...)
+              - pattern: sanitize_file_name(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+              - pattern: floatval(...)
+              - pattern: esc_sql(...)
+              - pattern: wp_unslash(...)
+              - pattern: stripslashes(...)
+              - pattern: htmlspecialchars(...)
+              - pattern: htmlentities(...)
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.validation.superglobal.not_unslashed
+    message: "Superglobal not unslashed before sanitization. WordPress automatically slashes $_GET, $_POST, $_COOKIE, and $_REQUEST values. Use wp_unslash() before sanitization."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: sanitize_text_field($_GET[$...KEY])
+          - pattern: sanitize_text_field($_POST[$...KEY])
+          - pattern: sanitize_text_field($_REQUEST[$...KEY])
+          - pattern: sanitize_text_field($_COOKIE[$...KEY])
+          - pattern: sanitize_email($_GET[$...KEY])
+          - pattern: sanitize_email($_POST[$...KEY])
+          - pattern: sanitize_url($_GET[$...KEY])
+          - pattern: sanitize_url($_POST[$...KEY])
+    metadata:
+      category: security
+      cwe: "CWE-20"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_unslash/
+      source: WordPress-Coding-Standards
+      license: MIT

@@ -1,0 +1,100 @@
+rules:
+  # ============================================================================
+  # WORDPRESS DEPRECATED FUNCTIONS RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/DeprecatedFunctionsSniff.php
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/DeprecatedClassesSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.deprecated.mysql_functions
+    message: "mysql_* functions are deprecated and removed in PHP 7.0+. Use $wpdb methods or mysqli instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: mysql_query(...)
+          - pattern: mysql_connect(...)
+          - pattern: mysql_select_db(...)
+          - pattern: mysql_fetch_array(...)
+          - pattern: mysql_fetch_assoc(...)
+          - pattern: mysql_real_escape_string(...)
+          - pattern: mysql_num_rows(...)
+          - pattern: mysql_insert_id(...)
+          - pattern: mysql_error(...)
+    metadata:
+      category: security
+      cwe: "CWE-477: Use of Obsolete Function"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/ref.mysql.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.deprecated.split
+    message: "split() is deprecated. Use preg_split() or explode() instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: split(...)
+    metadata:
+      category: security
+      cwe: "CWE-477"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.split.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.deprecated.ereg
+    message: "ereg* functions are deprecated. Use preg_match() instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: ereg(...)
+          - pattern: eregi(...)
+          - pattern: ereg_replace(...)
+          - pattern: eregi_replace(...)
+    metadata:
+      category: security
+      cwe: "CWE-477"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.ereg.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.deprecated.wp_functions
+    message: "This WordPress function is deprecated. Check the WordPress documentation for alternatives."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: get_currentuserinfo()
+          - pattern: get_user_by_email(...)
+          - pattern: get_userdatabylogin(...)
+          - pattern: get_user_by_email(...)
+          - pattern: wp_get_single_post(...)
+          - pattern: get_postdata(...)
+          - pattern: start_wp()
+          - pattern: the_category_id(...)
+          - pattern: the_category_head(...)
+          - pattern: previous_post(...)
+          - pattern: next_post(...)
+    metadata:
+      category: security
+      cwe: "CWE-477"
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/WP/DeprecatedFunctionsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT

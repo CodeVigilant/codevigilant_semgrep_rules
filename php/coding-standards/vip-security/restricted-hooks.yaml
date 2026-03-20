@@ -1,0 +1,26 @@
+rules:
+  # ============================================================================
+  # RESTRICTED HOOKS
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Hooks/RestrictedHooksSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.vip.restricted.hook_publish_future_post
+    message: "Hooking into 'publish_future_post' can cause race conditions. Use alternative approaches."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: add_action('publish_future_post', ...)
+          - pattern: add_filter('publish_future_post', ...)
+    metadata:
+      category: security
+      cwe: "CWE-362: Race Condition"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Hooks/RestrictedHooksSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

@@ -1,0 +1,87 @@
+rules:
+  # ============================================================================
+  # WORDPRESS GLOBAL VARIABLE OVERRIDE RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/GlobalVariablesOverrideSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.injection.global_wpdb_override
+    message: "Overwriting $wpdb is prohibited and can break WordPress database functionality."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          global $wpdb;
+          ...
+      - pattern: $wpdb = $...VAL;
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/WP/GlobalVariablesOverrideSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.global_wp_rewrite_override
+    message: "Overwriting $wp_rewrite is prohibited and can break WordPress URL routing."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          global $wp_rewrite;
+          ...
+      - pattern: $wp_rewrite = $...VAL;
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wp_rewrite/
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.global_wp_query_override
+    message: "Overwriting $wp_query is prohibited and can break WordPress query handling."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          global $wp_query;
+          ...
+      - pattern: $wp_query = $...VAL;
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/classes/wp_query/
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.global_post_override
+    message: "Overwriting $post global can cause issues with The Loop. Use setup_postdata() instead."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          global $post;
+          ...
+      - pattern: $post = $...VAL;
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/setup_postdata/
+      source: WordPress-Coding-Standards
+      license: MIT

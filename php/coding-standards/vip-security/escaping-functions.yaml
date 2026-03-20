@@ -1,0 +1,31 @@
+rules:
+  # ============================================================================
+  # VIP ESCAPING FUNCTION RULES
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/ProperEscapingFunctionSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/EscapingVoidReturnFunctionsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  # Note: esc_url_for_href rule removed due to being overly broad
+  # The original VIP sniff checks if esc_html() is used in href/src context specifically
+  # but Semgrep cannot reliably detect HTML attribute context in PHP templates
+  # This caused false positives on legitimate esc_html() usage for text content
+
+  - id: codevigilant.php.coding-standards.xss.void_return_escaping
+    message: "This escaping function may return void in some contexts. Verify the function always returns a string before using in output."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: echo wp_kses($...VAR, $...ALLOWED);
+          - pattern: echo wp_kses_post($...VAR);
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/EscapingVoidReturnFunctionsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

@@ -1,0 +1,41 @@
+rules:
+  # ============================================================================
+  # RESTRICTED CLASS EXTENSION
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Classes/RestrictedExtendClassesSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.vip.restricted.extend_wp_http
+    message: "Extending WP_HTTP is discouraged. Use wp_remote_* functions or hooks instead."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: class $C extends WP_Http { ... }
+    metadata:
+      category: security
+      cwe: "CWE-732"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Classes/RestrictedExtendClassesSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.extend_wp_http_ixr_client
+    message: "Extending WP_HTTP_IXR_Client is discouraged. Use wp_remote_* functions instead."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: class $C extends WP_HTTP_IXR_Client { ... }
+    metadata:
+      category: security
+      cwe: "CWE-732"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

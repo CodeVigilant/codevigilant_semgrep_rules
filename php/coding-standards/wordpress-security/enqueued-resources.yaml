@@ -1,0 +1,47 @@
+rules:
+  # ============================================================================
+  # ENQUEUED RESOURCES RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/EnqueuedResourcesSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.xss.inline_script_tag
+    message: "Use wp_enqueue_script() instead of inline <script> tags for proper dependency management and XSS prevention."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: echo "<script";
+          - pattern: echo '<script';
+          - pattern: print "<script";
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_enqueue_script/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/WP/EnqueuedResourcesSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.xss.inline_style_tag
+    message: "Use wp_enqueue_style() instead of inline <link> or <style> tags for proper dependency management."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: echo "<link";
+          - pattern: echo '<link';
+          - pattern: print "<link";
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_enqueue_style/
+      source: WordPress-Coding-Standards
+      license: MIT

@@ -1,0 +1,57 @@
+rules:
+  # ============================================================================
+  # WORDPRESS CAPABILITIES RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/CapabilitiesSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.auth.current_user_can
+    message: "Always check user capabilities before performing privileged actions. Use current_user_can() with appropriate capability."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: update_option(...)
+          - pattern: delete_option(...)
+          - pattern: update_post_meta(...)
+          - pattern: delete_post_meta(...)
+          - pattern: wp_insert_post(...)
+          - pattern: wp_update_post(...)
+          - pattern: wp_delete_post(...)
+          - pattern: update_user_meta(...)
+          - pattern: delete_user_meta(...)
+      - pattern-not-inside: |
+          if (current_user_can(...)) { ... }
+      - pattern-not-inside: |
+          if (!current_user_can(...)) { ... }
+      - pattern-not-inside: |
+          current_user_can(...);
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/WP/CapabilitiesSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.auth.hardcoded_capability
+    message: "Avoid using hardcoded capability strings. Consider making this configurable or using a role-based check."
+    severity: INFO
+    languages: [php]
+    patterns:
+      - pattern: current_user_can('...')
+    metadata:
+      category: security
+      cwe: "CWE-862"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+      source: WordPress-Coding-Standards
+      license: MIT

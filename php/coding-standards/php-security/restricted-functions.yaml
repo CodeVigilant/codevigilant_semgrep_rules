@@ -1,0 +1,101 @@
+rules:
+  # ============================================================================
+  # RESTRICTED PHP FUNCTIONS (RCE Prevention)
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/RestrictedPHPFunctionsSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.rce.exec_functions
+    message: "Arbitrary code execution via exec functions is prohibited. Use WordPress-specific alternatives or escapeshellcmd()/escapeshellarg()."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: exec(...)
+          - pattern: shell_exec(...)
+          - pattern: system(...)
+          - pattern: passthru(...)
+          - pattern: popen(...)
+          - pattern: proc_open(...)
+          - pattern: pcntl_exec(...)
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.exec.php
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/RestrictedPHPFunctionsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.rce.eval
+    message: "eval() is a security risk and should be avoided. It allows execution of arbitrary PHP code."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: eval(...)
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.eval.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.rce.assert
+    message: "assert() can execute arbitrary PHP code and should be avoided in production."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: assert(...)
+          - pattern: assert_options(...)
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.assert.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.rce.preg_replace_eval
+    message: "preg_replace() with /e modifier is deprecated and allows arbitrary code execution. Use preg_replace_callback() instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: preg_replace('/...e', ...)
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.preg-replace.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.rce.create_function
+    message: "create_function() is deprecated and allows arbitrary code execution. Use anonymous functions (closures) instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: create_function(...)
+    metadata:
+      category: security
+      cwe: "CWE-95"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.create-function.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

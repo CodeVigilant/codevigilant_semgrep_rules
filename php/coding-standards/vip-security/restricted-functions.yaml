@@ -1,0 +1,164 @@
+rules:
+  # ============================================================================
+  # VIP RESTRICTED FUNCTIONS
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Functions/RestrictedFunctionsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.vip.restricted.opcache
+    message: "opcache_* functions are prohibited on WordPress VIP platform due to memory corruption risks."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: opcache_reset()
+          - pattern: opcache_invalidate(...)
+          - pattern: opcache_compile_file(...)
+          - pattern: opcache_is_script_cached()
+          - pattern: opcache_get_status(...)
+          - pattern: opcache_get_configuration()
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment for Critical Resource"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Functions/RestrictedFunctionsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.session
+    message: "PHP session functions are prohibited on WordPress VIP platform. Use alternative storage mechanisms."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: session_start()
+          - pattern: session_destroy()
+          - pattern: session_id(...)
+          - pattern: session_name(...)
+          - pattern: session_save_path(...)
+          - pattern: session_set_save_handler(...)
+          - pattern: session_regenerate_id()
+          - pattern: session_unset()
+          - pattern: session_write_close()
+          - pattern: session_abort()
+          - pattern: session_status()
+          - pattern: session_get_cookie_params()
+          - pattern: session_set_cookie_params(...)
+    metadata:
+      category: security
+      cwe: "CWE-384: Session Fixation"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.file_write
+    message: "Filesystem writes are forbidden on WordPress VIP platform. Use WordPress APIs or external storage."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: file_put_contents(...)
+          - pattern: fwrite(...)
+          - pattern: fputs(...)
+          - pattern: fputcsv(...)
+          - pattern: flock(...)
+          - pattern: ftruncate(...)
+          - pattern: mkdir(...)
+          - pattern: rmdir(...)
+          - pattern: unlink(...)
+          - pattern: rename(...)
+          - pattern: symlink(...)
+          - pattern: link(...)
+          - pattern: touch(...)
+          - pattern: tempnam(...)
+          - pattern: chmod(...)
+          - pattern: chown(...)
+          - pattern: chgrp(...)
+          - pattern: lchown(...)
+          - pattern: lchgrp(...)
+    metadata:
+      category: security
+      cwe: "CWE-73: External Control of File Name or Path"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.flush_rewrite_rules
+    message: "flush_rewrite_rules() should not be used in theme/plugin code. It should only be run on activation/deactivation hooks."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: flush_rewrite_rules(...)
+    metadata:
+      category: security
+      cwe: "CWE-732"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.cookies
+    message: "setcookie() is unreliable on WordPress VIP due to server-side caching. Use client-side JavaScript instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: setcookie(...)
+    metadata:
+      category: security
+      cwe: "CWE-312: Cleartext Storage of Sensitive Information"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.wp_is_mobile
+    message: "Use jetpack_is_mobile() instead of wp_is_mobile() for better reliability with full page caching."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: wp_is_mobile()
+    metadata:
+      category: security
+      cwe: "CWE-1021"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-warnings/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.vip.restricted.switch_to_blog
+    message: "switch_to_blog() may not work as expected since it only changes the database context. Filters and hooks won't run on the switched blog."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: switch_to_blog(...)
+    metadata:
+      category: security
+      cwe: "CWE-668"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress-vip
+      confidence: MEDIUM
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-notices/
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

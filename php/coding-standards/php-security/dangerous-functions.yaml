@@ -1,0 +1,100 @@
+rules:
+  # ============================================================================
+  # DANGEROUS PHP FUNCTIONS
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/DiscouragedPHPFunctionsSniff.php
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/DontExtractSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.injection.extract
+    message: "extract() can overwrite variables and should be avoided. It can lead to variable injection vulnerabilities."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: extract($_GET)
+          - pattern: extract($_POST)
+          - pattern: extract($_REQUEST)
+          - pattern: extract($_COOKIE)
+          - pattern: extract($...VAR)
+    metadata:
+      category: security
+      cwe: "CWE-473: PHP Special Character Injection"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.extract.php
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/DontExtractSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.parse_str
+    message: "parse_str() without second argument can overwrite variables. Always pass the second argument to store results in an array."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: parse_str(...)
+      - pattern-not: parse_str(..., $...VAR)
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.parse-str.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.mb_parse_str
+    message: "mb_parse_str() without second argument can overwrite variables. Always pass the second argument to store results in an array."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: mb_parse_str(...)
+      - pattern-not: mb_parse_str(..., $...VAR)
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.mb-parse-str.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.injection.import_request_variables
+    message: "import_request_variables() is deprecated and allows variable injection. Use $_GET, $_POST, $_REQUEST directly."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: import_request_variables(...)
+    metadata:
+      category: security
+      cwe: "CWE-473"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.import-request-variables.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.info_disclosure.phpinfo
+    message: "phpinfo() exposes sensitive server information and should not be used in production."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: phpinfo()
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.phpinfo.php
+      source: WordPress-Coding-Standards
+      license: MIT

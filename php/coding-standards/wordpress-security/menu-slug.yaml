@@ -1,0 +1,39 @@
+rules:
+  # ============================================================================
+  # PLUGIN MENU SLUG RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/Security/PluginMenuSlugSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.injection.menu_slug_user_input
+    message: "User input in menu/page slug can lead to XSS or injection vulnerabilities. Use hardcoded slugs or properly sanitize."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: add_menu_page(..., $_GET[...], ...)
+          - pattern: add_submenu_page(..., $_GET[...], ...)
+          - pattern: add_menu_page(..., $_POST[...], ...)
+          - pattern: add_submenu_page(..., $_POST[...], ...)
+          - pattern: add_options_page(..., $_GET[...], ...)
+          - pattern: add_management_page(..., $_GET[...], ...)
+          - pattern: add_theme_page(..., $_GET[...], ...)
+          - pattern: add_plugins_page(..., $_GET[...], ...)
+          - pattern: add_users_page(..., $_GET[...], ...)
+          - pattern: add_dashboard_page(..., $_GET[...], ...)
+          - pattern: add_posts_page(..., $_GET[...], ...)
+          - pattern: add_media_page(..., $_GET[...], ...)
+          - pattern: add_links_page(..., $_GET[...], ...)
+          - pattern: add_pages_page(..., $_GET[...], ...)
+          - pattern: add_comments_page(..., $_GET[...], ...)
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/add_menu_page/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/Security/PluginMenuSlugSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT

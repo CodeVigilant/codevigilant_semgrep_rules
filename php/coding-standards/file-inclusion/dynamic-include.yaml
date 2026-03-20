@@ -1,0 +1,97 @@
+rules:
+  # ============================================================================
+  # FILE INCLUSION RULES (LFI/RFI Prevention)
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Files/IncludingFileSniff.php
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Files/IncludingNonPHPFileSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.lfi.dynamic_include
+    message: "Dynamic file inclusion detected. User input in include/require statements can lead to Local/Remote File Inclusion vulnerabilities."
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+              - pattern: $_SERVER[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: include $...VAR
+              - pattern: include_once $...VAR
+              - pattern: require $...VAR
+              - pattern: require_once $...VAR
+              - pattern: include($...VAR)
+              - pattern: include_once($...VAR)
+              - pattern: require($...VAR)
+              - pattern: require_once($...VAR)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: basename(...)
+              - pattern: sanitize_file_name(...)
+              - pattern: preg_replace(...)
+    metadata:
+      category: security
+      cwe: "CWE-98: Improper Control of Filename for Include/Require Statement in PHP Program ('PHP Remote File Inclusion')"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://docs.wpvip.com/technical-references/code-review/vip-errors/
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Files/IncludingFileSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.lfi.user_input_extension
+    message: "User-controlled file extension detected. This can lead to Remote Code Execution if non-PHP files are executed."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: include($_GET[...] . ".php");
+          - pattern: include_once($_GET[...] . ".php");
+          - pattern: require($_GET[...] . ".php");
+          - pattern: require_once($_GET[...] . ".php");
+          - pattern: include($_GET[...] . '...');
+          - pattern: require($_GET[...] . '...');
+    metadata:
+      category: security
+      cwe: "CWE-98"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Files/IncludingFileSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.lfi.non_php_include
+    message: "Including non-PHP files (.html, .txt, .json, .xml) can expose sensitive data or lead to XSS if the file contains executable content."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: include("...". ".html")
+          - pattern: include("...". ".txt")
+          - pattern: include("...". ".json")
+          - pattern: include("...". ".xml")
+          - pattern: include_once("...". ".html")
+          - pattern: include_once("...". ".txt")
+          - pattern: require("...". ".html")
+          - pattern: require("...". ".txt")
+    metadata:
+      category: security
+      cwe: "CWE-98"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Files/IncludingNonPHPFileSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later

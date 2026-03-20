@@ -1,0 +1,60 @@
+rules:
+  # ============================================================================
+  # SAFE REDIRECT RULES
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/Security/SafeRedirectSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.redirect.unsafe_wp_redirect
+    message: "Unsafe redirect with user-controlled URL. Use wp_safe_redirect() and esc_url_raw() to prevent open redirect vulnerabilities."
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_SERVER['HTTP_REFERER']
+              - pattern: $_SERVER['REQUEST_URI']
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_redirect($URL)
+              - pattern: wp_redirect($URL, ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: esc_url_raw(...)
+              - pattern: wp_sanitize_redirect(...)
+              - pattern: esc_url(...)
+    metadata:
+      category: security
+      cwe: "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_safe_redirect/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/Security/SafeRedirectSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.redirect.use_wp_safe_redirect
+    message: "Use wp_safe_redirect() instead of wp_redirect() for better security against open redirect attacks."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: wp_redirect(...)
+      - pattern-not: wp_safe_redirect(...)
+    metadata:
+      category: security
+      cwe: "CWE-601"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_safe_redirect/
+      source: WordPress-Coding-Standards
+      license: MIT

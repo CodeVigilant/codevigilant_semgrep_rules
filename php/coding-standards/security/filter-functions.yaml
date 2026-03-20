@@ -1,0 +1,46 @@
+rules:
+  # ============================================================================
+  # PHP FILTER FUNCTIONS
+  # Source: VIP-Coding-Standards/WordPressVIPMinimum/Sniffs/Security/PHPFilterFunctionsSniff.php
+  # License: GPL-2.0-or-later - Copyright Automattic Inc, 2016
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.validation.filter_unsafe_raw
+    message: "FILTER_UNSAFE_RAW provides no filtering. Use appropriate filter flags or WordPress sanitization functions."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: filter_var(..., FILTER_UNSAFE_RAW)
+      - pattern: filter_input(..., FILTER_UNSAFE_RAW)
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/filter.filters.php
+        - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/PHPFilterFunctionsSniff.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.coding-standards.validation.filter_default
+    message: "FILTER_DEFAULT provides no filtering. Use specific filter flags for proper validation."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: filter_var(..., FILTER_DEFAULT)
+          - pattern: filter_input(..., FILTER_DEFAULT)
+          - pattern: filter_var(...)
+          - pattern: filter_input(...)
+    metadata:
+      category: security
+      cwe: "CWE-20"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/filter.filters.php
+      source: VIP-Coding-Standards
+      license: GPL-2.0-or-later
