@@ -9,38 +9,45 @@ rules:
     message: "Missing exit/die after redirect. Code execution continues after wp_redirect() unless exit is called."
     severity: ERROR
     languages: [php]
+    mode: search
     patterns:
       - pattern-either:
-          - pattern: |
-              wp_redirect(...);
-              ...
-          - pattern: |
-              wp_safe_redirect(...);
-              ...
-      - pattern-not: |
-          wp_redirect(...);
-          exit;
-      - pattern-not: |
-          wp_redirect(...);
-          exit();
-      - pattern-not: |
-          wp_redirect(...);
-          die;
-      - pattern-not: |
-          wp_redirect(...);
-          die();
-      - pattern-not: |
-          wp_safe_redirect(...);
-          exit;
-      - pattern-not: |
-          wp_safe_redirect(...);
-          exit();
-      - pattern-not: |
-          wp_safe_redirect(...);
-          die;
-      - pattern-not: |
-          wp_safe_redirect(...);
-          die();
+          - patterns:
+              - pattern: wp_redirect(...);
+              - pattern-not-inside: |
+                  wp_redirect(...);
+                  exit;
+                  ...
+              - pattern-not-inside: |
+                  wp_redirect(...);
+                  exit();
+                  ...
+              - pattern-not-inside: |
+                  wp_redirect(...);
+                  die;
+                  ...
+              - pattern-not-inside: |
+                  wp_redirect(...);
+                  die();
+                  ...
+          - patterns:
+              - pattern: wp_safe_redirect(...);
+              - pattern-not-inside: |
+                  wp_safe_redirect(...);
+                  exit;
+                  ...
+              - pattern-not-inside: |
+                  wp_safe_redirect(...);
+                  exit();
+                  ...
+              - pattern-not-inside: |
+                  wp_safe_redirect(...);
+                  die;
+                  ...
+              - pattern-not-inside: |
+                  wp_safe_redirect(...);
+                  die();
+                  ...
     metadata:
       category: security
       cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
