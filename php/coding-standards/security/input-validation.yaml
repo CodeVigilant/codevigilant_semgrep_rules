@@ -11,24 +11,78 @@ rules:
     languages: [php]
     patterns:
       - pattern-either:
-          - pattern: $VAL = $_GET[$KEY];
-          - pattern: $VAL = $_POST[$KEY];
-          - pattern: $VAL = $_REQUEST[$KEY];
-          - pattern: $VAL = $_COOKIE[$KEY];
           - pattern: $_GET[$KEY]
           - pattern: $_POST[$KEY]
           - pattern: $_REQUEST[$KEY]
           - pattern: $_COOKIE[$KEY]
+      # Exclude when inside isset/empty wrappers (expression-level)
+      - pattern-not-inside: isset(...)
+      - pattern-not-inside: empty(...)
+      - pattern-not-inside: '!empty(...)'
+      - pattern-not-inside: '!isset(...)'
+      # Exclude when inside any expression containing isset/empty (short-circuit, ternary, etc.)
+      - pattern-not-inside: <... isset(...) ...>
+      - pattern-not-inside: <... empty(...) ...>
+      # Exclude when inside if condition or body containing isset/empty
       - pattern-not-inside: |
-          if (isset(...)) { ... }
+          if (<... isset(...) ...>) { ... }
       - pattern-not-inside: |
-          if (empty(...)) { ... }
-      - pattern-not: isset($_GET[...])
-      - pattern-not: isset($_POST[...])
-      - pattern-not: isset($_REQUEST[...])
-      - pattern-not: isset($_COOKIE[...])
-      - pattern-not: empty($_GET[...])
-      - pattern-not: empty($_POST[...])
+          if (<... empty(...) ...>) { ... }
+      - pattern-not-inside: |
+          if (<... !empty(...) ...>) { ... }
+      - pattern-not-inside: |
+          if (<... !isset(...) ...>) { ... }
+      # Exclude guard clause patterns (early return if not set)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (!isset(...)) { return; }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (!isset(...)) { return false; }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (empty(...)) { return; }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (empty(...)) { return false; }
+            ...
+          }
+      # Exclude null coalescing (validates existence)
+      - pattern-not-regex: '\$_(GET|POST|REQUEST|COOKIE)\[[^\]]+\]\s*\?\?'
+      # Exclude writes to superglobals (assignments TO, not reads FROM)
+      - pattern-not-regex: '\$_(GET|POST|REQUEST|COOKIE)\[[^\]]+\]\s*='
+      # Exclude when wrapped in sanitization/validation functions
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
+      - pattern-not-inside: sanitize_email(...)
+      - pattern-not-inside: sanitize_url(...)
+      - pattern-not-inside: sanitize_title(...)
+      - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: sanitize_mime_type(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: floatval(...)
+      - pattern-not-inside: wp_unslash(...)
+      - pattern-not-inside: wp_verify_nonce(...)
+      - pattern-not-inside: filter_var(...)
+      - pattern-not-inside: filter_input(...)
+      - pattern-not-inside: is_array(...)
+      - pattern-not-inside: in_array(...)
+      - pattern-not-inside: array_key_exists(...)
+      - pattern-not-inside: htmlspecialchars(...)
+      - pattern-not-inside: htmlentities(...)
+      - pattern-not-inside: json_decode(...)
+      - pattern-not-inside: array_map(...)
     metadata:
       category: security
       cwe: "CWE-129: Improper Validation of Array Index"

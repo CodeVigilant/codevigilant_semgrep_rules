@@ -12,19 +12,21 @@ rules:
   # This caused false positives on legitimate esc_html() usage for text content
 
   - id: codevigilant.php.coding-standards.xss.void_return_escaping
-    message: "This escaping function may return void in some contexts. Verify the function always returns a string before using in output."
+    message: "Redundant echo of a void-returning function. Functions like _e(), esc_html_e(), esc_attr_e() already echo their output and return void. Using echo with them indicates a misunderstanding of the escaping function."
     severity: WARNING
     languages: [php]
     patterns:
       - pattern-either:
-          - pattern: echo wp_kses($...VAR, $...ALLOWED);
-          - pattern: echo wp_kses_post($...VAR);
+          - pattern: echo _e(...);
+          - pattern: echo esc_html_e(...);
+          - pattern: echo esc_attr_e(...);
+          - pattern: echo esc_textarea_e(...);
     metadata:
       category: security
       cwe: "CWE-79"
       owasp: "A03:2021 - Injection"
       technology: wordpress
-      confidence: LOW
+      confidence: HIGH
       references:
         - https://github.com/Automattic/VIP-Coding-Standards/blob/develop/WordPressVIPMinimum/Sniffs/Security/EscapingVoidReturnFunctionsSniff.php
       source: VIP-Coding-Standards
