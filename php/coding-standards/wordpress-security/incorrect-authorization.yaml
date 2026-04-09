@@ -1,0 +1,52 @@
+rules:
+  - id: codevigilant.php.coding-standards.incorrect_authorization.ajax_nopriv_no_capability_check
+    patterns:
+      - pattern: |
+          add_action('wp_ajax_nopriv_$ACTION', $CALLBACK);
+      - pattern-not-inside: |
+          function $CALLBACK(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+          ...
+          add_action('wp_ajax_nopriv_$ACTION', $CALLBACK);
+    message: |
+      Detected WordPress AJAX handler registered for unauthenticated users (wp_ajax_nopriv_) without capability checks.
+      Any unauthenticated user can trigger this handler. Ensure the callback validates user capabilities with current_user_can()
+      or that the handler is intentionally public.
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/checking-user-capabilities/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.coding-standards.incorrect_authorization.rest_no_permission_callback
+    patterns:
+      - pattern: |
+          register_rest_route($NAMESPACE, $ROUTE, array(...));
+      - pattern-not-inside: |
+          register_rest_route($NAMESPACE, $ROUTE, array(<... 'permission_callback' ...>));
+    message: |
+      Detected WordPress REST API route registered without a permission_callback.
+      Without a permission_callback, the endpoint is accessible to anyone.
+      Add a 'permission_callback' to enforce proper authorization.
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/
+        - https://developer.wordpress.org/plugins/security/checking-user-capabilities/
+    languages: [php]
+    mode: search
+    severity: HIGH

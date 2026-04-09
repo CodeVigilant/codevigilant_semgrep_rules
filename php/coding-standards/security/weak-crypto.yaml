@@ -1,0 +1,66 @@
+rules:
+  - id: codevigilant.php.coding-standards.weak_crypto.md5_hash
+    pattern-either:
+      - pattern: md5($PASSWORD)
+      - pattern: md5($PASSWORD, $RAW)
+    message: |
+      Detected use of MD5 for hashing which is cryptographically weak.
+      MD5 is vulnerable to collision attacks and should not be used for passwords or security tokens.
+      Use wp_hash_password() for passwords or hash() with SHA-256/SHA-512 for other purposes.
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_cryptographic_key
+        - https://developer.wordpress.org/reference/functions/wp_hash_password/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.coding-standards.weak_crypto.sha1_hash
+    patterns:
+      - pattern-either:
+        - pattern: sha1($DATA)
+        - pattern: sha1($DATA, ...)
+    message: |
+      Detected use of SHA1 for hashing which is cryptographically weak.
+      SHA1 is vulnerable to collision attacks and should not be used for security-sensitive operations.
+      Use hash('sha256', $data) or wp_hash_password() for passwords.
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Use_of_hard-coded_cryptographic_key
+        - https://www.php.net/manual/en/function.hash.php
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.coding-standards.weak_crypto.mcrypt_functions
+    pattern-either:
+      - pattern: mcrypt_encrypt(...)
+      - pattern: mcrypt_decrypt(...)
+      - pattern: mcrypt_cbc(...)
+      - pattern: mcrypt_ecb(...)
+    message: |
+      Detected use of deprecated mcrypt functions.
+      The mcrypt extension was deprecated in PHP 7.1 and removed in PHP 7.2.
+      Use openssl_encrypt() and openssl_decrypt() or the sodium extension instead.
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/migration71.deprecated.php
+        - https://www.php.net/manual/en/function.openssl-encrypt.php
+    languages: [php]
+    mode: search
+    severity: MEDIUM

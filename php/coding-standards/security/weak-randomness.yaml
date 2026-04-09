@@ -1,0 +1,62 @@
+rules:
+  - id: codevigilant.php.coding-standards.weak_randomness.rand
+    pattern-either:
+      - pattern: rand()
+      - pattern: rand($MIN, $MAX)
+    message: |
+      Detected use of rand() which produces predictable pseudo-random numbers.
+      rand() is not cryptographically secure and should not be used for tokens, nonces, or security-sensitive values.
+      Use random_int() for integers or random_bytes() for raw bytes. For WordPress, use wp_generate_password().
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.random-int.php
+        - https://developer.wordpress.org/reference/functions/wp_generate_password/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.coding-standards.weak_randomness.mt_rand
+    pattern-either:
+      - pattern: mt_rand()
+      - pattern: mt_rand($MIN, $MAX)
+    message: |
+      Detected use of mt_rand() which produces predictable pseudo-random numbers.
+      mt_rand() is not cryptographically secure and should not be used for tokens, nonces, or security-sensitive values.
+      Use random_int() for integers or random_bytes() for raw bytes. For WordPress, use wp_generate_password().
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.random-int.php
+        - https://developer.wordpress.org/reference/functions/wp_generate_password/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.coding-standards.weak_randomness.uniqid
+    pattern: uniqid(...)
+    message: |
+      Detected use of uniqid() which generates predictable identifiers.
+      uniqid() is based on the current time and is not cryptographically secure.
+      Use random_bytes() or bin2hex(random_bytes(16)) for unique tokens.
+      For WordPress, use wp_generate_uuid4() or wp_generate_password().
+    metadata:
+      category: security
+      cwe: "CWE-330: Use of Insufficiently Random Values"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.random-bytes.php
+        - https://developer.wordpress.org/reference/functions/wp_generate_uuid4/
+    languages: [php]
+    mode: search
+    severity: MEDIUM

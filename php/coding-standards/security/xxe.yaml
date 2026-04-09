@@ -1,0 +1,76 @@
+rules:
+  - id: codevigilant.php.coding-standards.xxe.simplexml_load_string
+    patterns:
+      - pattern: simplexml_load_string(...)
+      - pattern-not-inside: |
+          ...
+          libxml_disable_entity_loader(true);
+          ...
+          simplexml_load_string(...);
+    message: |
+      Detected potential XML External Entity (XXE) vulnerability.
+      simplexml_load_string() is called without disabling external entity loading.
+      Call libxml_disable_entity_loader(true) before parsing XML or use LIBXML_NOENT flag.
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+        - https://www.php.net/manual/en/function.libxml-disable-entity-loader.php
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.coding-standards.xxe.simplexml_load_file
+    patterns:
+      - pattern: simplexml_load_file(...)
+      - pattern-not-inside: |
+          ...
+          libxml_disable_entity_loader(true);
+          ...
+          simplexml_load_file(...);
+    message: |
+      Detected potential XML External Entity (XXE) vulnerability.
+      simplexml_load_file() is called without disabling external entity loading.
+      Call libxml_disable_entity_loader(true) before parsing XML or use LIBXML_NOENT flag.
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+        - https://www.php.net/manual/en/function.libxml-disable-entity-loader.php
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.coding-standards.xxe.dom_loadxml
+    patterns:
+      - pattern-either:
+        - pattern: $DOM->loadXML(...)
+        - pattern: $DOM->load(...)
+      - pattern-not-inside: |
+          ...
+          libxml_disable_entity_loader(true);
+          ...
+    message: |
+      Detected potential XML External Entity (XXE) vulnerability.
+      DOMDocument loadXML() or load() is called without disabling external entity loading.
+      Call libxml_disable_entity_loader(true) before parsing XML.
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+        - https://www.php.net/manual/en/function.libxml-disable-entity-loader.php
+    languages: [php]
+    mode: search
+    severity: HIGH

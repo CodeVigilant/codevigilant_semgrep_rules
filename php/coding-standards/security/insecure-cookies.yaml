@@ -1,0 +1,41 @@
+rules:
+  - id: codevigilant.php.coding-standards.insecure_cookie.missing_secure_flag
+    patterns:
+      - pattern: setcookie($NAME, $VALUE);
+    message: |
+      Detected setcookie() call without the Secure and HttpOnly flags.
+      Cookies set without the Secure flag can be transmitted over unencrypted connections.
+      Cookies set without the HttpOnly flag are accessible to JavaScript and vulnerable to XSS theft.
+      Use setcookie($name, $value, ['secure' => true, 'httponly' => true, 'samesite' => 'Strict']).
+    metadata:
+      category: security
+      cwe: "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/controls/SecureCookieAttribute
+        - https://www.php.net/manual/en/function.setcookie.php
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.coding-standards.insecure_cookie.missing_httponly_flag
+    patterns:
+      - pattern: setcookie($NAME, $VALUE, $EXPIRE, $PATH, $DOMAIN, $SECURE);
+    message: |
+      Detected setcookie() call without the HttpOnly flag.
+      Without HttpOnly, cookies are accessible to JavaScript and vulnerable to XSS-based theft.
+      Add the HttpOnly parameter: setcookie($name, $value, $expire, $path, $domain, $secure, true).
+    metadata:
+      category: security
+      cwe: "CWE-1004: Sensitive Cookie Without 'HttpOnly' Flag"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/HttpOnly
+        - https://www.php.net/manual/en/function.setcookie.php
+    languages: [php]
+    mode: search
+    severity: MEDIUM

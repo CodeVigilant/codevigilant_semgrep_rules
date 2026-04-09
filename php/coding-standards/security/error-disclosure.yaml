@@ -1,0 +1,68 @@
+rules:
+  - id: codevigilant.php.coding-standards.error_disclosure.display_errors_on
+    pattern-either:
+      - pattern: ini_set('display_errors', '1');
+      - pattern: ini_set('display_errors', 1);
+      - pattern: ini_set("display_errors", "1");
+      - pattern: ini_set("display_errors", 1);
+      - pattern: ini_set('display_errors', 'On');
+      - pattern: ini_set("display_errors", "On");
+    message: |
+      Detected display_errors being enabled in code.
+      Displaying errors in production can leak sensitive information such as file paths, database details, and stack traces.
+      Disable display_errors in production and log errors to a file instead using error_log().
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/Improper_Error_Handling
+        - https://www.php.net/manual/en/errorfunc.configuration.php
+    languages: [php]
+    mode: search
+    severity: LOW
+
+  - id: codevigilant.php.coding-standards.error_disclosure.display_startup_errors
+    pattern-either:
+      - pattern: ini_set('display_startup_errors', '1');
+      - pattern: ini_set('display_startup_errors', 1);
+      - pattern: ini_set("display_startup_errors", "1");
+      - pattern: ini_set("display_startup_errors", 1);
+    message: |
+      Detected display_startup_errors being enabled in code.
+      Displaying startup errors in production can leak sensitive server configuration information.
+      Disable display_startup_errors in production environments.
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/Improper_Error_Handling
+        - https://www.php.net/manual/en/errorfunc.configuration.php
+    languages: [php]
+    mode: search
+    severity: LOW
+
+  - id: codevigilant.php.coding-standards.error_disclosure.wp_debug_display
+    pattern-either:
+      - pattern: define('WP_DEBUG_DISPLAY', true);
+      - pattern: define("WP_DEBUG_DISPLAY", true);
+    message: |
+      Detected WP_DEBUG_DISPLAY set to true.
+      This displays WordPress errors and notices on the front end, leaking sensitive information.
+      Set WP_DEBUG_DISPLAY to false in production and use WP_DEBUG_LOG to log errors to a file.
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/advanced-administration/debug/debug-wordpress/
+    languages: [php]
+    mode: search
+    severity: LOW

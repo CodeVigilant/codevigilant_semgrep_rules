@@ -1,0 +1,119 @@
+rules:
+  # Direct patterns - $_FILES used in move_uploaded_file without type checking
+  - id: codevigilant.php.wordpress.file_upload.files.move_uploaded_file.direct
+    patterns:
+      - pattern: $_FILES[$KEY]
+      - pattern-inside: move_uploaded_file($X, ...);
+      - pattern-not-inside: wp_check_filetype(...)
+      - pattern-not-inside: wp_check_filetype_and_ext(...)
+      - pattern-not-inside: wp_handle_upload(...)
+    message: |
+      Detected unrestricted file upload vulnerability in WordPress.
+      $_FILES data is directly used in move_uploaded_file() without file type validation.
+      Use wp_handle_upload() or wp_check_filetype() to validate uploaded file types.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload/
+        - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.file_upload.files.copy.direct
+    patterns:
+      - pattern: $_FILES[$KEY]
+      - pattern-inside: copy($X, ...);
+      - pattern-not-inside: wp_check_filetype(...)
+      - pattern-not-inside: wp_check_filetype_and_ext(...)
+      - pattern-not-inside: wp_handle_upload(...)
+    message: |
+      Detected unrestricted file upload vulnerability in WordPress.
+      $_FILES data is directly used in copy() without file type validation.
+      Use wp_handle_upload() or wp_check_filetype() to validate uploaded file types.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload/
+        - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  # Deep taint - variable assignment from $_FILES then used in file operations
+  - id: codevigilant.php.wordpress.file_upload.files.move_uploaded_file.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_FILES[$KEY]['tmp_name'];
+            ...
+            move_uploaded_file($V, ...);
+        - pattern: |
+            $V = $_FILES[$KEY];
+            ...
+            move_uploaded_file($V['tmp_name'], ...);
+      - pattern-not-inside: |
+          ...
+          wp_check_filetype(...);
+          ...
+          move_uploaded_file(...);
+      - pattern-not-inside: |
+          ...
+          wp_check_filetype_and_ext(...);
+          ...
+          move_uploaded_file(...);
+    message: |
+      Detected unrestricted file upload vulnerability in WordPress.
+      $_FILES data is assigned to a variable and later used in move_uploaded_file() without file type validation.
+      Use wp_handle_upload() or wp_check_filetype() to validate uploaded file types.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload/
+        - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  # Detect native PHP upload handling instead of WordPress API
+  - id: codevigilant.php.wordpress.file_upload.files.native_upload
+    patterns:
+      - pattern-either:
+        - pattern: move_uploaded_file($_FILES[$KEY]['tmp_name'], ...);
+        - pattern: move_uploaded_file($_FILES[$KEY][$IDX], ...);
+      - pattern-not-inside: |
+          ...
+          wp_check_filetype(...);
+          ...
+      - pattern-not-inside: |
+          ...
+          wp_handle_upload(...);
+          ...
+    message: |
+      Detected native PHP file upload handling in WordPress instead of using WordPress upload API.
+      Using move_uploaded_file() directly bypasses WordPress security checks.
+      Use wp_handle_upload() which validates file types and handles uploads securely.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload/
+        - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+    languages: [php]
+    mode: search
+    severity: HIGH

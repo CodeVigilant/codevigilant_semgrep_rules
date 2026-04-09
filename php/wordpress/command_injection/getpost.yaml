@@ -1,0 +1,302 @@
+rules:
+  # Direct taint patterns - user input directly in command execution functions
+  - id: codevigilant.php.wordpress.command_injection.getpost.exec.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: exec($X, ...);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in exec() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.system.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: system($X, ...);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in system() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.passthru.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: passthru($X, ...);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in passthru() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.shell_exec.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: shell_exec($X);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in shell_exec() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.popen.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: popen($X, ...);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in popen() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.proc_open.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: proc_open($X, ...);
+      - pattern-not-inside: escapeshellarg(...)
+      - pattern-not-inside: escapeshellcmd(...)
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in proc_open() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  # Deep taint patterns - variable assignment before command execution
+  - id: codevigilant.php.wordpress.command_injection.getpost.exec.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            exec(<... $V ...>, ...);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            exec(<... $V ...>, ...);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            exec(<... $V ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          exec(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          exec(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          exec(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          exec(<... escapeshellcmd($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          exec(<... escapeshellcmd($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          exec(<... escapeshellcmd($V) ...>, ...);
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in exec() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.system.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            system(<... $V ...>, ...);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            system(<... $V ...>, ...);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            system(<... $V ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          system(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          system(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          system(<... escapeshellarg($V) ...>, ...);
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in system() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.command_injection.getpost.shell_exec.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            shell_exec(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            shell_exec(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            shell_exec(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          shell_exec(<... escapeshellarg($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          shell_exec(<... escapeshellarg($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          shell_exec(<... escapeshellarg($V) ...>);
+    message: |
+      Detected command injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in shell_exec() without sanitization.
+      Use escapeshellarg() to escape individual arguments or avoid shell commands entirely.
+    metadata:
+      category: security
+      cwe: "CWE-77: Improper Neutralization of Special Elements used in a Command ('Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.php.net/manual/en/function.escapeshellarg.php
+    languages: [php]
+    mode: search
+    severity: CRITICAL

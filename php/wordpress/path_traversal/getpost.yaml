@@ -1,0 +1,269 @@
+rules:
+  # Direct taint patterns - user input directly in file operation functions
+  - id: codevigilant.php.wordpress.path_traversal.getpost.file_get_contents.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: file_get_contents($X);
+      - pattern-not-inside: realpath(...)
+      - pattern-not-inside: basename(...)
+      - pattern-not-inside: wp_normalize_path(...)
+      - pattern-not-inside: sanitize_file_name(...)
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in file_get_contents() without path validation.
+      Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.path_traversal.getpost.fopen.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: fopen($X, ...);
+      - pattern-not-inside: realpath(...)
+      - pattern-not-inside: basename(...)
+      - pattern-not-inside: wp_normalize_path(...)
+      - pattern-not-inside: sanitize_file_name(...)
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in fopen() without path validation.
+      Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.path_traversal.getpost.readfile.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: readfile($X);
+      - pattern-not-inside: realpath(...)
+      - pattern-not-inside: basename(...)
+      - pattern-not-inside: wp_normalize_path(...)
+      - pattern-not-inside: sanitize_file_name(...)
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in readfile() without path validation.
+      Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.path_traversal.getpost.unlink.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: unlink($X);
+      - pattern-not-inside: realpath(...)
+      - pattern-not-inside: basename(...)
+      - pattern-not-inside: wp_normalize_path(...)
+      - pattern-not-inside: sanitize_file_name(...)
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in unlink() without path validation.
+      An attacker could delete arbitrary files. Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.path_traversal.getpost.include.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-either:
+        - pattern-inside: include $X;
+        - pattern-inside: include_once $X;
+        - pattern-inside: require $X;
+        - pattern-inside: require_once $X;
+      - pattern-not-inside: realpath(...)
+      - pattern-not-inside: basename(...)
+      - pattern-not-inside: sanitize_file_name(...)
+    message: |
+      Detected local file inclusion vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in include/require without path validation.
+      This can lead to remote code execution. Use a whitelist of allowed files instead of user-controlled paths.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  # Deep taint patterns - variable assignment before file operation
+  - id: codevigilant.php.wordpress.path_traversal.getpost.file_get_contents.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            file_get_contents(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            file_get_contents(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            file_get_contents(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... sanitize_file_name($V) ...>);
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in file_get_contents() without path validation.
+      Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.path_traversal.getpost.unlink.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            unlink(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            unlink(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            unlink(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... realpath($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... basename($V) ...>);
+    message: |
+      Detected path traversal vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in unlink() without path validation.
+      An attacker could delete arbitrary files. Use basename() or realpath() to prevent directory traversal attacks.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

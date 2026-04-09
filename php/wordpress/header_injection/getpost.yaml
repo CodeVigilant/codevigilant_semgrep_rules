@@ -1,0 +1,115 @@
+rules:
+  # Direct taint patterns - user input directly in header()
+  - id: codevigilant.php.wordpress.header_injection.getpost.header.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: header($X);
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: filter_var(...)
+      - pattern-not-inside: intval(...)
+    message: |
+      Detected HTTP header injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in header() without sanitization.
+      An attacker could inject CRLF characters to manipulate HTTP headers or split responses.
+      Use sanitize_text_field() or esc_url() to sanitize the input.
+    metadata:
+      category: security
+      cwe: "CWE-113: Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Response Splitting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  - id: codevigilant.php.wordpress.header_injection.getpost.setcookie.direct
+    patterns:
+      - pattern-either:
+        - pattern: $_GET[$KEY]
+        - pattern: $_POST[$KEY]
+        - pattern: $_REQUEST[$KEY]
+      - pattern-inside: setcookie($X, ...);
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: filter_var(...)
+    message: |
+      Detected HTTP header injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is directly used in setcookie() without sanitization.
+      An attacker could inject malicious cookie values. Use sanitize_text_field() to sanitize the input.
+    metadata:
+      category: security
+      cwe: "CWE-113: Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Response Splitting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
+
+  # Deep taint patterns
+  - id: codevigilant.php.wordpress.header_injection.getpost.header.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            header(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            header(<... $V ...>);
+        - pattern: |
+            $V = $_REQUEST[$KEY];
+            ...
+            header(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... esc_url($V) ...>);
+    message: |
+      Detected HTTP header injection vulnerability in WordPress.
+      User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in header() without sanitization.
+      An attacker could inject CRLF characters to manipulate HTTP headers. Use sanitize_text_field() or esc_url() to sanitize the input.
+    metadata:
+      category: security
+      cwe: "CWE-113: Improper Neutralization of CRLF Sequences in HTTP Headers ('HTTP Response Splitting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: MEDIUM
