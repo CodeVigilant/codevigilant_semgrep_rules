@@ -7,6 +7,10 @@ rules:
         - pattern: $_POST[$KEY]
         - pattern: $_REQUEST[$KEY]
       - pattern-inside: call_user_func($X, ...);
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected unsafe reflection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in call_user_func() to dynamically call a function.
@@ -31,6 +35,10 @@ rules:
         - pattern: $_POST[$KEY]
         - pattern: $_REQUEST[$KEY]
       - pattern-inside: call_user_func_array($X, ...);
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected unsafe reflection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in call_user_func_array() to dynamically call a function.

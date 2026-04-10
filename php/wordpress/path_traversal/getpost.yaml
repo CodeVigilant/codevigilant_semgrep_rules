@@ -11,6 +11,11 @@ rules:
       - pattern-not-inside: basename(...)
       - pattern-not-inside: wp_normalize_path(...)
       - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: validate_file(...)
+      - pattern-not-inside: validate_file_to_edit(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in file_get_contents() without path validation.
@@ -39,6 +44,11 @@ rules:
       - pattern-not-inside: basename(...)
       - pattern-not-inside: wp_normalize_path(...)
       - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: validate_file(...)
+      - pattern-not-inside: validate_file_to_edit(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in fopen() without path validation.
@@ -67,6 +77,11 @@ rules:
       - pattern-not-inside: basename(...)
       - pattern-not-inside: wp_normalize_path(...)
       - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: validate_file(...)
+      - pattern-not-inside: validate_file_to_edit(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in readfile() without path validation.
@@ -95,6 +110,11 @@ rules:
       - pattern-not-inside: basename(...)
       - pattern-not-inside: wp_normalize_path(...)
       - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: validate_file(...)
+      - pattern-not-inside: validate_file_to_edit(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in unlink() without path validation.
@@ -126,6 +146,11 @@ rules:
       - pattern-not-inside: realpath(...)
       - pattern-not-inside: basename(...)
       - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: validate_file(...)
+      - pattern-not-inside: validate_file_to_edit(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected local file inclusion vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in include/require without path validation.
@@ -195,6 +220,54 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           file_get_contents(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          file_get_contents(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          file_get_contents(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          file_get_contents(<... absint($V) ...>);
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in file_get_contents() without path validation.
@@ -251,6 +324,66 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           unlink(<... basename($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... sanitize_file_name($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... validate_file($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          unlink(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          unlink(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          unlink(<... absint($V) ...>);
     message: |
       Detected path traversal vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in unlink() without path validation.

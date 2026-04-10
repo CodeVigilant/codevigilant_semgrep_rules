@@ -9,8 +9,12 @@ rules:
         - pattern: $_SERVER[$KEY]
       - pattern-inside: error_log($X, ...);
       - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_textarea_field(...)
       - pattern-not-inside: esc_html(...)
       - pattern-not-inside: wp_strip_all_tags(...)
+      - pattern-not-inside: strip_tags(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected log injection vulnerability in WordPress.
       User input from superglobals is directly used in error_log() without sanitization.
@@ -38,8 +42,12 @@ rules:
         - pattern: $_SERVER[$KEY]
       - pattern-inside: syslog($PRIORITY, $X);
       - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_textarea_field(...)
       - pattern-not-inside: esc_html(...)
       - pattern-not-inside: wp_strip_all_tags(...)
+      - pattern-not-inside: strip_tags(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
     message: |
       Detected log injection vulnerability in WordPress.
       User input from superglobals is directly used in syslog() without sanitization.
@@ -94,6 +102,70 @@ rules:
           $V = $_SERVER[$KEY];
           ...
           error_log(<... sanitize_text_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          error_log(<... sanitize_textarea_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          error_log(<... sanitize_textarea_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          error_log(<... sanitize_textarea_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_SERVER[$KEY];
+          ...
+          error_log(<... sanitize_textarea_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          error_log(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          error_log(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          error_log(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_SERVER[$KEY];
+          ...
+          error_log(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          error_log(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          error_log(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          error_log(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_SERVER[$KEY];
+          ...
+          error_log(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          error_log(<... strip_tags($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          error_log(<... strip_tags($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          error_log(<... strip_tags($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_SERVER[$KEY];
+          ...
+          error_log(<... strip_tags($V) ...>, ...);
     message: |
       Detected log injection vulnerability in WordPress.
       User input from superglobals is assigned to a variable and later used in error_log() without sanitization.

@@ -34,6 +34,37 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.path_traversal.getpost.file_get_contents.direct
+// codevigilant.php.wordpress.path_traversal.getpost.file_get_contents.deep_taint
+// codevigilant.php.wordpress.path_traversal.getpost.fopen.direct
+// codevigilant.php.wordpress.path_traversal.getpost.readfile.direct
+// codevigilant.php.wordpress.path_traversal.getpost.unlink.direct
+// codevigilant.php.wordpress.path_traversal.getpost.unlink.deep_taint
+// codevigilant.php.wordpress.path_traversal.getpost.include.direct
+// codevigilant.php.wordpress.command_injection.getpost.exec.direct
+// codevigilant.php.wordpress.command_injection.getpost.exec.deep_taint
+// codevigilant.php.wordpress.command_injection.getpost.system.direct
+// codevigilant.php.wordpress.command_injection.getpost.system.deep_taint
+// codevigilant.php.wordpress.command_injection.getpost.passthru.direct
+// codevigilant.php.wordpress.command_injection.getpost.shell_exec.direct
+// codevigilant.php.wordpress.command_injection.getpost.shell_exec.deep_taint
+// codevigilant.php.wordpress.command_injection.getpost.popen.direct
+// codevigilant.php.wordpress.command_injection.getpost.proc_open.direct
+// codevigilant.php.wordpress.file_upload.files.move_uploaded_file.direct
+// codevigilant.php.wordpress.file_upload.files.move_uploaded_file.deep_taint
+// codevigilant.php.wordpress.file_upload.files.copy.direct
+// codevigilant.php.wordpress.file_upload.files.native_upload
+// codevigilant.php.wordpress.header_injection.getpost.header.direct
+// codevigilant.php.wordpress.header_injection.getpost.header.deep_taint
+// codevigilant.php.wordpress.header_injection.getpost.setcookie.direct
+// codevigilant.php.wordpress.unsafe_reflection.getpost.call_user_func.direct
+// codevigilant.php.wordpress.unsafe_reflection.getpost.call_user_func.deep_taint
+// codevigilant.php.wordpress.unsafe_reflection.getpost.call_user_func_array.direct
+// codevigilant.php.wordpress.unsafe_reflection.getpost.dynamic_instantiation.deep_taint
+// codevigilant.php.wordpress.unsafe_reflection.getpost.dynamic_call.deep_taint
+// codevigilant.php.wordpress.log_injection.getpost.error_log.direct
+// codevigilant.php.wordpress.log_injection.getpost.error_log.deep_taint
+// codevigilant.php.wordpress.log_injection.getpost.syslog.direct
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +265,184 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Path Traversal — direct file operations with user input
+// ---------------------------------------------------------------------------
+
+function vuln_path_traversal_fopen_direct() {
+    // EXPECTED: path_traversal.getpost.fopen.direct
+    $fh = fopen($_POST['path'], 'r');
+}
+
+function vuln_path_traversal_readfile_direct() {
+    // EXPECTED: path_traversal.getpost.readfile.direct
+    readfile($_REQUEST['doc']);
+}
+
+function vuln_path_traversal_unlink_direct() {
+    // EXPECTED: path_traversal.getpost.unlink.direct
+    unlink($_GET['file']);
+}
+
+function vuln_path_traversal_include_direct() {
+    // EXPECTED: path_traversal.getpost.include.direct
+    include $_GET['page'];
+}
+
+function vuln_path_traversal_file_get_contents_deep_taint() {
+    // EXPECTED: path_traversal.getpost.file_get_contents.deep_taint
+    $path = $_POST['filepath'];
+    $data = file_get_contents($path);
+}
+
+function vuln_path_traversal_unlink_deep_taint() {
+    // EXPECTED: path_traversal.getpost.unlink.deep_taint
+    $target = $_GET['delete_file'];
+    unlink($target);
+}
+
+// ---------------------------------------------------------------------------
+// Command Injection — user input in command execution functions
+// ---------------------------------------------------------------------------
+
+function vuln_cmdi_exec_direct() {
+    // EXPECTED: command_injection.getpost.exec.direct
+    exec($_GET['cmd']);
+}
+
+function vuln_cmdi_system_direct() {
+    // EXPECTED: command_injection.getpost.system.direct
+    system($_POST['cmd']);
+}
+
+function vuln_cmdi_passthru_direct() {
+    // EXPECTED: command_injection.getpost.passthru.direct
+    passthru($_REQUEST['cmd']);
+}
+
+function vuln_cmdi_shell_exec_direct() {
+    // EXPECTED: command_injection.getpost.shell_exec.direct
+    shell_exec($_GET['cmd']);
+}
+
+function vuln_cmdi_popen_direct() {
+    // EXPECTED: command_injection.getpost.popen.direct
+    popen($_POST['cmd'], 'r');
+}
+
+function vuln_cmdi_proc_open_direct() {
+    // EXPECTED: command_injection.getpost.proc_open.direct
+    proc_open($_REQUEST['cmd'], array(), $pipes);
+}
+
+function vuln_cmdi_exec_deep_taint() {
+    // EXPECTED: command_injection.getpost.exec.deep_taint
+    $command = $_GET['run'];
+    exec($command);
+}
+
+function vuln_cmdi_system_deep_taint() {
+    // EXPECTED: command_injection.getpost.system.deep_taint
+    $cmd = $_POST['action'];
+    system($cmd);
+}
+
+function vuln_cmdi_shell_exec_deep_taint() {
+    // EXPECTED: command_injection.getpost.shell_exec.deep_taint
+    $input = $_GET['payload'];
+    shell_exec($input);
+}
+
+// ---------------------------------------------------------------------------
+// File Upload — unrestricted file upload without type validation
+// ---------------------------------------------------------------------------
+
+function vuln_file_upload_native() {
+    // EXPECTED: file_upload.files.native_upload, file_upload.files.move_uploaded_file.direct
+    move_uploaded_file($_FILES['avatar']['tmp_name'], '/uploads/avatar.php');
+}
+
+function vuln_file_upload_copy_direct() {
+    // EXPECTED: file_upload.files.copy.direct
+    copy($_FILES['doc']['tmp_name'], '/uploads/document.pdf');
+}
+
+function vuln_file_upload_deep_taint() {
+    // EXPECTED: file_upload.files.move_uploaded_file.deep_taint
+    $tmp = $_FILES['upload']['tmp_name'];
+    move_uploaded_file($tmp, '/uploads/file.txt');
+}
+
+// ---------------------------------------------------------------------------
+// Header Injection — user input in HTTP headers
+// ---------------------------------------------------------------------------
+
+function vuln_header_injection_direct() {
+    // EXPECTED: header_injection.getpost.header.direct
+    header("Location: " . $_GET['redirect']);
+}
+
+function vuln_header_injection_setcookie_direct() {
+    // EXPECTED: header_injection.getpost.setcookie.direct
+    setcookie('pref', $_POST['preference']);
+}
+
+function vuln_header_injection_deep_taint() {
+    // EXPECTED: header_injection.getpost.header.deep_taint
+    $loc = $_GET['next'];
+    header("Location: " . $loc);
+}
+
+// ---------------------------------------------------------------------------
+// Unsafe Reflection — user input selects functions/classes
+// ---------------------------------------------------------------------------
+
+function vuln_unsafe_reflection_call_user_func_direct() {
+    // EXPECTED: unsafe_reflection.getpost.call_user_func.direct
+    call_user_func($_GET['callback'], 'arg1');
+}
+
+function vuln_unsafe_reflection_call_user_func_array_direct() {
+    // EXPECTED: unsafe_reflection.getpost.call_user_func_array.direct
+    call_user_func_array($_POST['func'], array());
+}
+
+function vuln_unsafe_reflection_call_user_func_deep_taint() {
+    // EXPECTED: unsafe_reflection.getpost.call_user_func.deep_taint
+    $fn = $_GET['handler'];
+    call_user_func($fn, 'data');
+}
+
+function vuln_unsafe_reflection_dynamic_instantiation() {
+    // EXPECTED: unsafe_reflection.getpost.dynamic_instantiation.deep_taint
+    $class = $_POST['widget'];
+    $obj = new $class();
+}
+
+function vuln_unsafe_reflection_dynamic_call() {
+    // EXPECTED: unsafe_reflection.getpost.dynamic_call.deep_taint
+    $callback = $_REQUEST['hook'];
+    $callback();
+}
+
+// ---------------------------------------------------------------------------
+// Log Injection — user input in log functions
+// ---------------------------------------------------------------------------
+
+function vuln_log_injection_error_log_direct() {
+    // EXPECTED: log_injection.getpost.error_log.direct
+    error_log($_GET['msg']);
+}
+
+function vuln_log_injection_syslog_direct() {
+    // EXPECTED: log_injection.getpost.syslog.direct
+    syslog(LOG_WARNING, $_POST['alert']);
+}
+
+function vuln_log_injection_error_log_deep_taint() {
+    // EXPECTED: log_injection.getpost.error_log.deep_taint
+    $input = $_GET['user_data'];
+    error_log("User submitted: " . $input);
 }

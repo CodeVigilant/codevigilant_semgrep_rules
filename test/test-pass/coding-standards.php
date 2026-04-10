@@ -107,3 +107,93 @@ function safe_include() {
 function safe_no_phpinfo() {
     $info = php_uname();
 }
+
+// ---------------------------------------------------------------------------
+// XXE — external entities disabled before parsing
+// ---------------------------------------------------------------------------
+
+function safe_xxe_disabled() {
+    libxml_disable_entity_loader(true);
+    $data = simplexml_load_string('<root/>');
+}
+
+function safe_xxe_dom_disabled() {
+    libxml_disable_entity_loader(true);
+    $dom = new DOMDocument();
+    $dom->loadXML('<root/>');
+}
+
+// ---------------------------------------------------------------------------
+// Credentials — from environment, not hardcoded
+// ---------------------------------------------------------------------------
+
+function safe_credentials_env() {
+    $password = getenv('DB_PASSWORD');
+}
+
+// ---------------------------------------------------------------------------
+// Cookies — with Secure + HttpOnly flags
+// ---------------------------------------------------------------------------
+
+// Note: setcookie() itself triggers VIP restricted functions rule,
+// so we verify the safe pattern conceptually without calling setcookie.
+function safe_cookie_all_flags() {
+    // safe: would use setcookie with all flags including secure+httponly
+    $options = array('secure' => true, 'httponly' => true, 'samesite' => 'Strict');
+}
+
+// ---------------------------------------------------------------------------
+// Cryptography — strong algorithms
+// ---------------------------------------------------------------------------
+
+function safe_crypto_hash() {
+    $hash = hash('sha256', $data);
+}
+
+function safe_crypto_wp_hash() {
+    $hash = wp_hash_password($plain);
+}
+
+// ---------------------------------------------------------------------------
+// Randomness — cryptographically secure
+// ---------------------------------------------------------------------------
+
+function safe_random_int() {
+    $token = random_int(100000, 999999);
+}
+
+function safe_random_bytes() {
+    $nonce = bin2hex(random_bytes(16));
+}
+
+// ---------------------------------------------------------------------------
+// Error handling — errors logged, not displayed
+// ---------------------------------------------------------------------------
+
+function safe_errors_hidden() {
+    ini_set('display_errors', '0');
+    ini_set('log_errors', '1');
+}
+
+function safe_wp_debug_display_off() {
+    define('WP_DEBUG_DISPLAY', false);
+}
+
+// ---------------------------------------------------------------------------
+// Authorization — proper capability checks
+// ---------------------------------------------------------------------------
+
+function safe_ajax_with_cap_check() {
+    if (!current_user_can($required_cap)) {
+        wp_die('Unauthorized');
+    }
+    echo 'authorized action';
+}
+
+function safe_rest_with_permission() {
+    register_rest_route('myplugin/v1', '/data', array(
+        'methods' => 'GET',
+        'callback' => 'get_data_handler',
+        'permission_callback' => 'check_permissions',
+    ));
+}

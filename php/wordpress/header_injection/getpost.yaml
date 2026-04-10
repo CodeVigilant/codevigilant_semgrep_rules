@@ -10,8 +10,12 @@ rules:
       - pattern-not-inside: sanitize_text_field(...)
       - pattern-not-inside: esc_url(...)
       - pattern-not-inside: esc_url_raw(...)
+      - pattern-not-inside: sanitize_url(...)
       - pattern-not-inside: filter_var(...)
       - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_key(...)
+      - pattern-not-inside: wp_strip_all_tags(...)
     message: |
       Detected HTTP header injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in header() without sanitization.
@@ -39,7 +43,12 @@ rules:
       - pattern-inside: setcookie($X, ...);
       - pattern-not-inside: sanitize_text_field(...)
       - pattern-not-inside: esc_url(...)
+      - pattern-not-inside: sanitize_url(...)
       - pattern-not-inside: filter_var(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_key(...)
+      - pattern-not-inside: wp_strip_all_tags(...)
     message: |
       Detected HTTP header injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in setcookie() without sanitization.
@@ -97,6 +106,54 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           header(<... esc_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... sanitize_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... sanitize_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... sanitize_url($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          header(<... wp_strip_all_tags($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          header(<... wp_strip_all_tags($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          header(<... wp_strip_all_tags($V) ...>);
     message: |
       Detected HTTP header injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in header() without sanitization.

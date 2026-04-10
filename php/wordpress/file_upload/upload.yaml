@@ -7,6 +7,8 @@ rules:
       - pattern-not-inside: wp_check_filetype(...)
       - pattern-not-inside: wp_check_filetype_and_ext(...)
       - pattern-not-inside: wp_handle_upload(...)
+      - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: sanitize_mime_type(...)
     message: |
       Detected unrestricted file upload vulnerability in WordPress.
       $_FILES data is directly used in move_uploaded_file() without file type validation.
@@ -31,6 +33,8 @@ rules:
       - pattern-not-inside: wp_check_filetype(...)
       - pattern-not-inside: wp_check_filetype_and_ext(...)
       - pattern-not-inside: wp_handle_upload(...)
+      - pattern-not-inside: sanitize_file_name(...)
+      - pattern-not-inside: sanitize_mime_type(...)
     message: |
       Detected unrestricted file upload vulnerability in WordPress.
       $_FILES data is directly used in copy() without file type validation.

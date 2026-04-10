@@ -1,20 +1,14 @@
 rules:
   - id: codevigilant.php.coding-standards.incorrect_authorization.ajax_nopriv_no_capability_check
     patterns:
-      - pattern: |
-          add_action('wp_ajax_nopriv_$ACTION', $CALLBACK);
-      - pattern-not-inside: |
-          function $CALLBACK(...) {
-            ...
-            current_user_can(...);
-            ...
-          }
-          ...
-          add_action('wp_ajax_nopriv_$ACTION', $CALLBACK);
+      - pattern: add_action($HOOK, ...);
+      - metavariable-regex:
+          metavariable: $HOOK
+          regex: ".*wp_ajax_nopriv_.*"
     message: |
-      Detected WordPress AJAX handler registered for unauthenticated users (wp_ajax_nopriv_) without capability checks.
-      Any unauthenticated user can trigger this handler. Ensure the callback validates user capabilities with current_user_can()
-      or that the handler is intentionally public.
+      Detected WordPress AJAX handler registered for unauthenticated users (wp_ajax_nopriv_).
+      Any unauthenticated visitor can trigger this handler. Ensure the callback validates user capabilities
+      with current_user_can() or that the handler is intentionally public.
     metadata:
       category: security
       cwe: "CWE-863: Incorrect Authorization"
@@ -32,8 +26,7 @@ rules:
     patterns:
       - pattern: |
           register_rest_route($NAMESPACE, $ROUTE, array(...));
-      - pattern-not-inside: |
-          register_rest_route($NAMESPACE, $ROUTE, array(<... 'permission_callback' ...>));
+      - pattern-not-regex: "permission_callback"
     message: |
       Detected WordPress REST API route registered without a permission_callback.
       Without a permission_callback, the endpoint is accessible to anyone.

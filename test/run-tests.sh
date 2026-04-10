@@ -28,7 +28,7 @@ extract_expected_rules() {
     grep '// EXPECTED_RULES:' -A 200 "$file" \
         | grep '^// codevigilant\.' \
         | sed 's|^// ||' \
-        | sort
+        | LC_ALL=C sort
 }
 
 # ---------------------------------------------------------------------------

@@ -19,6 +19,25 @@
 // codevigilant.php.coding-standards.info_disclosure.var_dump
 // codevigilant.php.coding-standards.lfi.dynamic_include
 // codevigilant.php.coding-standards.sqli.direct_db_query
+// codevigilant.php.coding-standards.xxe.simplexml_load_string
+// codevigilant.php.coding-standards.xxe.simplexml_load_file
+// codevigilant.php.coding-standards.xxe.dom_loadxml
+// codevigilant.php.coding-standards.hardcoded_credentials.password_assignment
+// codevigilant.php.coding-standards.hardcoded_credentials.define_password
+// codevigilant.php.coding-standards.insecure_cookie.missing_secure_flag
+// codevigilant.php.coding-standards.insecure_cookie.missing_httponly_flag
+// codevigilant.php.coding-standards.weak_crypto.md5_hash
+// codevigilant.php.coding-standards.weak_crypto.sha1_hash
+// codevigilant.php.coding-standards.weak_crypto.mcrypt_functions
+// codevigilant.php.coding-standards.weak_randomness.rand
+// codevigilant.php.coding-standards.weak_randomness.mt_rand
+// codevigilant.php.coding-standards.weak_randomness.uniqid
+// codevigilant.php.coding-standards.error_disclosure.display_errors_on
+// codevigilant.php.coding-standards.error_disclosure.display_startup_errors
+// codevigilant.php.coding-standards.error_disclosure.wp_debug_display
+// codevigilant.php.coding-standards.incorrect_authorization.ajax_nopriv_no_capability_check
+// codevigilant.php.coding-standards.incorrect_authorization.rest_no_permission_callback
+// codevigilant.php.coding-standards.vip.restricted.cookies
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -151,4 +170,124 @@ function vuln_direct_db_get_results() {
 
 function vuln_filter_default() {
     $val = filter_input(INPUT_GET, 'param', FILTER_DEFAULT);
+}
+
+// ---------------------------------------------------------------------------
+// XXE — XML parsing without disabling external entities
+// Triggers: xxe.simplexml_load_string, xxe.simplexml_load_file, xxe.dom_loadxml
+// ---------------------------------------------------------------------------
+
+function vuln_xxe_simplexml_string() {
+    $xml = '<root><item>test</item></root>';
+    $data = simplexml_load_string($xml);
+}
+
+function vuln_xxe_simplexml_file() {
+    $data = simplexml_load_file('/tmp/data.xml');
+}
+
+function vuln_xxe_dom_loadxml() {
+    $dom = new DOMDocument();
+    $dom->loadXML('<root/>');
+}
+
+// ---------------------------------------------------------------------------
+// Hard-coded Credentials
+// Triggers: hardcoded_credentials.password_assignment,
+//           hardcoded_credentials.define_password
+// ---------------------------------------------------------------------------
+
+function vuln_hardcoded_password() {
+    $password = "SuperSecret123!";
+}
+
+function vuln_hardcoded_define() {
+    define('DB_PASSWORD', 'my_db_pass');
+}
+
+// ---------------------------------------------------------------------------
+// Insecure Cookies — missing Secure and HttpOnly flags
+// Triggers: insecure_cookie.missing_secure_flag,
+//           insecure_cookie.missing_httponly_flag
+// ---------------------------------------------------------------------------
+
+function vuln_cookie_no_flags() {
+    setcookie('session', 'abc123');
+}
+
+function vuln_cookie_no_httponly() {
+    setcookie('session', 'abc123', time() + 3600, '/', '.example.com', true);
+}
+
+// ---------------------------------------------------------------------------
+// Weak Cryptography — MD5, SHA1, mcrypt
+// Triggers: weak_crypto.md5_hash, weak_crypto.sha1_hash,
+//           weak_crypto.mcrypt_functions
+// ---------------------------------------------------------------------------
+
+function vuln_md5_hash() {
+    $hash = md5($input);
+}
+
+function vuln_sha1_hash() {
+    $hash = sha1($data);
+}
+
+function vuln_mcrypt() {
+    $encrypted = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $key, $data, MCRYPT_MODE_CBC);
+}
+
+// ---------------------------------------------------------------------------
+// Weak Randomness — rand, mt_rand, uniqid
+// Triggers: weak_randomness.rand, weak_randomness.mt_rand,
+//           weak_randomness.uniqid
+// ---------------------------------------------------------------------------
+
+function vuln_rand() {
+    $token = rand(100000, 999999);
+}
+
+function vuln_mt_rand() {
+    $nonce = mt_rand();
+}
+
+function vuln_uniqid() {
+    $session_id = uniqid('sess_', true);
+}
+
+// ---------------------------------------------------------------------------
+// Error Disclosure — display_errors enabled
+// Triggers: error_disclosure.display_errors_on,
+//           error_disclosure.display_startup_errors,
+//           error_disclosure.wp_debug_display
+// ---------------------------------------------------------------------------
+
+function vuln_display_errors() {
+    ini_set('display_errors', '1');
+}
+
+function vuln_display_startup_errors() {
+    ini_set('display_startup_errors', '1');
+}
+
+function vuln_wp_debug_display() {
+    define('WP_DEBUG_DISPLAY', true);
+}
+
+// ---------------------------------------------------------------------------
+// Incorrect Authorization — AJAX/REST without capability checks
+// Triggers: incorrect_authorization.ajax_nopriv_no_capability_check,
+//           incorrect_authorization.rest_no_permission_callback
+// ---------------------------------------------------------------------------
+
+function vuln_ajax_handler() {
+    echo 'delete done';
+}
+add_action('wp_ajax_nopriv_delete_item', 'vuln_ajax_handler');
+
+function vuln_rest_no_permission() {
+    register_rest_route('myplugin/v1', '/data', array(
+        'methods' => 'GET',
+        'callback' => 'get_data_handler',
+    ));
 }

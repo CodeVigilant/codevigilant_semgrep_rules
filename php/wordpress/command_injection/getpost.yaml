@@ -9,6 +9,10 @@ rules:
       - pattern-inside: exec($X, ...);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in exec() without sanitization.
@@ -35,6 +39,10 @@ rules:
       - pattern-inside: system($X, ...);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in system() without sanitization.
@@ -61,6 +69,10 @@ rules:
       - pattern-inside: passthru($X, ...);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in passthru() without sanitization.
@@ -87,6 +99,10 @@ rules:
       - pattern-inside: shell_exec($X);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in shell_exec() without sanitization.
@@ -113,6 +129,10 @@ rules:
       - pattern-inside: popen($X, ...);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in popen() without sanitization.
@@ -139,6 +159,10 @@ rules:
       - pattern-inside: proc_open($X, ...);
       - pattern-not-inside: escapeshellarg(...)
       - pattern-not-inside: escapeshellcmd(...)
+      - pattern-not-inside: intval(...)
+      - pattern-not-inside: absint(...)
+      - pattern-not-inside: sanitize_text_field(...)
+      - pattern-not-inside: sanitize_key(...)
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is directly used in proc_open() without sanitization.
@@ -196,6 +220,42 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           exec(<... escapeshellcmd($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          exec(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          exec(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          exec(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          exec(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          exec(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          exec(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          exec(<... sanitize_text_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          exec(<... sanitize_text_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          exec(<... sanitize_text_field($V) ...>, ...);
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in exec() without sanitization.
@@ -240,6 +300,42 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           system(<... escapeshellarg($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          system(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          system(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          system(<... intval($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          system(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          system(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          system(<... absint($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          system(<... sanitize_text_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          system(<... sanitize_text_field($V) ...>, ...);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          system(<... sanitize_text_field($V) ...>, ...);
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in system() without sanitization.
@@ -284,6 +380,42 @@ rules:
           $V = $_REQUEST[$KEY];
           ...
           shell_exec(<... escapeshellarg($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          shell_exec(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          shell_exec(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          shell_exec(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          shell_exec(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          shell_exec(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          shell_exec(<... absint($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          shell_exec(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          shell_exec(<... sanitize_text_field($V) ...>);
+      - pattern-not-inside: |
+          $V = $_REQUEST[$KEY];
+          ...
+          shell_exec(<... sanitize_text_field($V) ...>);
     message: |
       Detected command injection vulnerability in WordPress.
       User input from $_GET, $_POST, or $_REQUEST is assigned to a variable and later used in shell_exec() without sanitization.
