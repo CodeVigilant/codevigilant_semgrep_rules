@@ -1,0 +1,41 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.permission-redirect-no-return
+    patterns:
+      - pattern: |
+          if (!$OBJ.hasPermission($PERM)) {
+            ...
+            $RESP.sendRedirect(...);
+            ...
+          }
+      - pattern-not: |
+          if (!$OBJ.hasPermission($PERM)) {
+            ...
+            return ...;
+            ...
+          }
+      - pattern-not: |
+          if (!$OBJ.hasPermission($PERM)) {
+            ...
+            throw ...;
+            ...
+          }
+    message: |
+      Detected a negated permission check whose failure branch redirects but
+      does not terminate the handler with 'return' or 'throw'. The redirect is
+      cosmetic: execution continues past the branch, so the un-authorized
+      request proceeds to the protected operations. Every authorization
+      failure branch must end the request (return / throw) immediately after
+      the redirect, otherwise the permission check is fail-open.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
