@@ -1,0 +1,28 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.docheck-connection
+    patterns:
+      - pattern-inside: |
+          public FormValidation $METHOD(...) {
+            ...
+          }
+      - pattern: $URL.openConnection()
+    message: |
+      Detected a form-validation method (doCheck/doFill) that opens a network
+      connection. Descriptor validation endpoints are reachable by any
+      authenticated user with read access and require no CSRF crumb, so a
+      low-privileged user can make the Jenkins controller connect to arbitrary
+      internal hosts (blind SSRF). Perform only syntactic validation in doCheck
+      methods, or gate the connection on an explicit permission check.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
