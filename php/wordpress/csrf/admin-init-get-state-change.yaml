@@ -1,0 +1,84 @@
+rules:
+  # ============================================================================
+  # SUPERGLOBAL-DRIVEN OPTION WRITE WITHOUT NONCE (CSRF)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags public class methods that read a request superglobal
+  # ($_GET/$_POST/$_REQUEST) and persist the result via update_option() /
+  # update_site_option() WITHOUT verifying a nonce anywhere in the method.
+  #
+  # WordPress hooks admin_init / admin_post / admin-ajax handlers with this
+  # shape are classic CSRF sinks: the handler runs for any logged-in user with
+  # the required page access, and a cross-site request (malicious link, <img>
+  # tag, auto-submitting form) triggers the state change with the victim's
+  # session. A current_user_can() capability check does NOT mitigate CSRF -
+  # the victim is already authorized; only a nonce (wp_verify_nonce /
+  # check_admin_referer / check_ajax_referer) binds the request to the
+  # victim's intent.
+  #
+  # CWE-352: Cross-Site Request Forgery
+
+  - id: codevigilant.php.wordpress.csrf.admin_init.get_state_change
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      # sink: option write
+      - pattern-either:
+          - pattern: update_option($NAME, $VALUE)
+          - pattern: update_site_option($NAME, $VALUE)
+      # the write must live inside a public method that also reads a superglobal
+      - pattern-inside: |
+          public function $FUNC(...) {
+              ...
+              $SUPERGLOBAL[$KEY];
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $SUPERGLOBAL
+          regex: \$_(GET|POST|REQUEST|COOKIE)
+      # exclude methods that verify a nonce anywhere in their body
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              wp_verify_nonce(...);
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              check_admin_referer(...);
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              check_ajax_referer(...);
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              wp_nonce_field(...);
+              ...
+          }
+    message: |
+      A public method reads a request superglobal and persists an option
+      (update_option/update_site_option) without verifying a nonce. When this
+      method is hooked to admin_init/admin_post or an AJAX action, a
+      cross-site request can silently change plugin/theme settings for a
+      logged-in admin (CSRF). A current_user_can() check does not prevent
+      CSRF. Add wp_verify_nonce() (paired with wp_nonce_field()/nonce in the
+      form) or check_admin_referer()/check_ajax_referer() before the write.
+    metadata:
+      category: security
+      cwe: "CWE-352: Cross-Site Request Forgery"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/nonces/
+        - https://owasp.org/www-community/attacks/csrf
+      source: CodeVigilant
+      license: MIT

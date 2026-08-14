@@ -1,0 +1,127 @@
+rules:
+  # ============================================================================
+  # UNPREPARED SQL BUILT FROM STRING INTERPOLATION / CONCATENATION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Direct $wpdb queries whose SQL text is assembled with PHP string
+  # interpolation or concatenation of variables (instead of being passed to
+  # $wpdb->prepare()) cannot be trusted: if any interpolated variable is
+  # request-derived, the query is vulnerable to SQL injection (CWE-89).
+  # Even when the variables currently come from an internal array, the
+  # construction pattern is unsafe - any future request-derived value flows
+  # straight into the query text.
+
+  - id: codevigilant.php.wordpress.sqli.unprepared_interpolated_query
+    severity: HIGH
+    languages: [php]
+    mode: search
+    message: |
+      A $wpdb query is executed with SQL text that is assembled from string
+      interpolation or concatenation of variables instead of $wpdb->prepare().
+      If any of the interpolated variables can be influenced by a request, an
+      attacker can inject SQL syntax into the query (SQL injection, CWE-89).
+      Always route queries through $wpdb->prepare() with placeholder values.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+      source: CodeVigilant
+      license: MIT
+    patterns:
+      - pattern-either:
+          # Case 1: the SQL argument is itself an interpolated string literal.
+          - patterns:
+              - pattern-either:
+                  - pattern: $wpdb->query("...{$A}...");
+                  - pattern: $wpdb->get_var("...{$A}...");
+                  - pattern: $wpdb->get_col("...{$A}...");
+                  - pattern: $wpdb->get_row("...{$A}...");
+                  - pattern: $wpdb->get_results("...{$A}...");
+              - pattern-not-inside: $wpdb->prepare(...)
+          # Case 2: the SQL is assigned to a variable from a concatenation or
+          # interpolated string, then executed later without prepare().
+          - patterns:
+              - pattern-inside: |
+                  $SQL = $RHS;
+                  ...
+                  $wpdb->query($SQL);
+              - pattern: $wpdb->query($SQL);
+              - metavariable-pattern:
+                  metavariable: $RHS
+                  patterns:
+                    - pattern-either:
+                        - pattern: $A . $B
+                        - pattern: $A . $B . $C
+                        - pattern: $A . $B . $C . $D
+                        - pattern: $A . $B . $C . $D . $E
+                        - pattern: "$A"
+              - pattern-not-inside: $wpdb->prepare(...)
+          - patterns:
+              - pattern-inside: |
+                  $SQL = $RHS;
+                  ...
+                  $wpdb->get_var($SQL);
+              - pattern: $wpdb->get_var($SQL);
+              - metavariable-pattern:
+                  metavariable: $RHS
+                  patterns:
+                    - pattern-either:
+                        - pattern: $A . $B
+                        - pattern: $A . $B . $C
+                        - pattern: $A . $B . $C . $D
+                        - pattern: $A . $B . $C . $D . $E
+                        - pattern: "$A"
+              - pattern-not-inside: $wpdb->prepare(...)
+          - patterns:
+              - pattern-inside: |
+                  $SQL = $RHS;
+                  ...
+                  $wpdb->get_col($SQL);
+              - pattern: $wpdb->get_col($SQL);
+              - metavariable-pattern:
+                  metavariable: $RHS
+                  patterns:
+                    - pattern-either:
+                        - pattern: $A . $B
+                        - pattern: $A . $B . $C
+                        - pattern: $A . $B . $C . $D
+                        - pattern: $A . $B . $C . $D . $E
+                        - pattern: "$A"
+              - pattern-not-inside: $wpdb->prepare(...)
+          - patterns:
+              - pattern-inside: |
+                  $SQL = $RHS;
+                  ...
+                  $wpdb->get_row($SQL);
+              - pattern: $wpdb->get_row($SQL);
+              - metavariable-pattern:
+                  metavariable: $RHS
+                  patterns:
+                    - pattern-either:
+                        - pattern: $A . $B
+                        - pattern: $A . $B . $C
+                        - pattern: $A . $B . $C . $D
+                        - pattern: $A . $B . $C . $D . $E
+                        - pattern: "$A"
+              - pattern-not-inside: $wpdb->prepare(...)
+          - patterns:
+              - pattern-inside: |
+                  $SQL = $RHS;
+                  ...
+                  $wpdb->get_results($SQL);
+              - pattern: $wpdb->get_results($SQL);
+              - metavariable-pattern:
+                  metavariable: $RHS
+                  patterns:
+                    - pattern-either:
+                        - pattern: $A . $B
+                        - pattern: $A . $B . $C
+                        - pattern: $A . $B . $C . $D
+                        - pattern: $A . $B . $C . $D . $E
+                        - pattern: "$A"
+              - pattern-not-inside: $wpdb->prepare(...)

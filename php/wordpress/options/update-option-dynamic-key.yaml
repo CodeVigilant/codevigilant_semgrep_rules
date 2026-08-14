@@ -1,0 +1,53 @@
+rules:
+  # ============================================================================
+  # OPTION NAME NOT A LITERAL IN update_option()/add_option() (DYNAMIC KEY)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags update_option()/add_option()/update_site_option()/add_site_option()
+  # whose OPTION NAME argument is a variable (non-literal) rather than a
+  # hard-coded string. WordPress option names are arbitrary strings, so when
+  # the key originates from untrusted data (deserialized import files,
+  # request input, decoded JSON) the caller can overwrite ANY site option -
+  # active_plugins (activate an arbitrary installed plugin -> code
+  # execution), default_role/users_can_register (privilege escalation),
+  # admin_email/new_admin_email (account takeover via password reset),
+  # siteurl/template (site hijack). Import/settings-import flows that loop
+  # over an untrusted 'options' map are the classic trigger (CWE-502 /
+  # CWE-862). Validate the option key against an explicit allowlist before
+  # writing, and treat unserialize() of non-trusted data as unsafe regardless
+  # of allowed_classes.
+
+  - id: codevigilant.php.wordpress.options.update_option.dynamic_key
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: update_option($OPTION_KEY, ...)
+          - pattern: add_option($OPTION_KEY, ...)
+          - pattern: update_site_option($OPTION_KEY, ...)
+          - pattern: add_site_option($OPTION_KEY, ...)
+      - metavariable-regex:
+          metavariable: $OPTION_KEY
+          regex: "^\\$[a-zA-Z_][a-zA-Z0-9_]*(\\[[^]]*\\])*$"
+    message: |
+      The option NAME passed to update_option()/add_option() (or the
+      site-option variants) is a variable, not a fixed literal. If the key
+      can be influenced by untrusted data (deserialized/imported content,
+      request input), any site option can be overwritten - enabling plugin
+      activation (RCE), privilege escalation via default_role, admin email
+      takeover, or site redirect. Validate the option key against an explicit
+      allowlist before writing (CWE-502 / CWE-862).
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/update_option/
+        - https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: CodeVigilant
+      license: MIT

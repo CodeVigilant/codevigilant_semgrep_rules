@@ -1,0 +1,60 @@
+rules:
+  # ============================================================================
+  # SUPERGLOBAL FORWARDING TO EXTERNAL SERVICES
+  # Original CodeVigilant rule.
+  # ============================================================================
+  #
+  # Detects code that copies request data from PHP superglobals (loops over
+  # $_SERVER / $_POST) into an array that is later sent to an external service
+  # (spam-check APIs, analytics, webhooks, etc.).
+  #
+  # A `foreach ( $_SERVER ... )` copy forwards EVERY request header except the
+  # ones explicitly skipped — including HTTP_AUTHORIZATION (Basic credentials,
+  # application passwords) and arbitrary custom HTTP_* headers. A
+  # `foreach ( $_POST ... )` copy forwards every form field, including nonces,
+  # tokens and passwords of other plugins that happen to be present on the form.
+  # The copy must be restricted to an explicit allowlist of non-sensitive keys.
+
+  - id: codevigilant.php.wordpress.security.exposure.superglobal_forwarding
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern-inside: |
+                  foreach ( $_SERVER as $key => $value ) { ... }
+              - pattern-either:
+                  - pattern: $X["$key"] = $value;
+                  - pattern: $X[$key] = $value;
+              - pattern-not-inside: |
+                  foreach ( $_SERVER as $key => $value ) {
+                    if ( in_array( $key, $...ALLOWED, true ) ) { continue; }
+                    ...
+                  }
+              - pattern-not-inside: |
+                  foreach ( $_SERVER as $key => $value ) {
+                    if ( ! in_array( $key, $...ALLOWED, true ) ) { continue; }
+                    ...
+                  }
+          - patterns:
+              - pattern-inside: |
+                  foreach ( $_POST as $key => $value ) { ... }
+              - pattern-either:
+                  - pattern: $X["POST_$key"] = $value;
+                  - pattern: $X["POST_{$key}"] = $value;
+    message: |
+      Detected request data being copied from PHP superglobals into an array
+      that is forwarded to an external service. Loops over $_SERVER forward
+      every request header (including HTTP_AUTHORIZATION with Basic credentials
+      or application passwords, and any custom HTTP_* header), and loops over
+      $_POST forward every form field (including nonces and tokens belonging to
+      other plugins). Only copy explicitly allowlisted, non-sensitive fields.
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: HIGH

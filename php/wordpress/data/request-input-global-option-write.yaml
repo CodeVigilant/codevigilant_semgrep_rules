@@ -1,0 +1,77 @@
+rules:
+  # ============================================================================
+  # REQUEST-DERIVED DATA PERSISTED TO SITE-WIDE OPTIONS/TRANSIENTS
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags request-derived values (superglobals, parse_str()-decoded bodies)
+  # that are written to site-wide storage (update_option/update_site_option/
+  # set_transient). Options and transients are global per site: state written
+  # by one user is read back by any other authorized user in a later request,
+  # and code that continues a multi-request operation by reading that state
+  # applies the stored values (table names, search/replace terms, URLs, ...)
+  # inside the *next* user's authenticated session. A co-operator can inject
+  # continuation state that is executed with another user's privileges, and
+  # prior users' request data lingers in global storage readable by everyone
+  # with access (CWE-345/CWE-200). Bind per-user operation state to the
+  # current user (user meta or per-user transient keys) instead of global
+  # options/transients.
+
+  - id: codevigilant.php.wordpress.data.request_input_global_option_write
+    severity: WARNING
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_POST[...]
+              - pattern: $_GET[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+              - pattern: $_FILES[...]
+              - pattern: parse_str($INPUT, $ARGS)
+    pattern-propagators:
+      - pattern: parse_str($SRC, $DST)
+        from: $SRC
+        to: $DST
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: update_option($NAME, $VALUE)
+              - pattern: update_site_option($NAME, $VALUE)
+              - pattern: set_transient($NAME, $VALUE, ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_email(...)
+              - pattern: sanitize_url(...)
+              - pattern: sanitize_title(...)
+              - pattern: absint(...)
+              - pattern: intval(...)
+              - pattern: (string) $X
+              - pattern: strval(...)
+    message: |
+      Detected request-derived data (a superglobal or a parse_str()-decoded
+      body) written to site-wide storage (update_option/update_site_option/
+      set_transient) without binding to the current user. Options and
+      transients are global: a later request from a different authorized user
+      reads and acts on this state, so a co-operator can inject continuation
+      state that executes inside another user's authenticated session, and
+      prior users' request data remains readable in global storage
+      (CWE-345/CWE-200). Store multi-request operation state per user (user
+      meta or per-user transient keys) and validate the owner on every
+      continuation step.
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/update_option/
+        - https://developer.wordpress.org/reference/functions/set_transient/
+        - https://developer.wordpress.org/reference/functions/parse_str/
+      source: CodeVigilant
+      license: MIT

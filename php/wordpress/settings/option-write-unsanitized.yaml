@@ -1,0 +1,71 @@
+rules:
+  # ============================================================================
+  # JSON IMPORTED FROM USER INPUT WRITTEN TO AN OPTION WITHOUT SANITIZATION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags settings-import style flows where a JSON payload originating from a
+  # superglobal ($_GET/$_POST/$_REQUEST) is decoded and stored with
+  # update_option()/add_option() without any sanitization of the decoded
+  # values (CWE-20 / CWE-79). Raw HTML/script in decoded fields is stored and
+  # later rendered by core or themes (admin menus, listings, notices), which
+  # turns a crafted import file into stored XSS. Sanitize every decoded value
+  # before persisting (sanitize_text_field(), wp_kses_post(), etc.) and
+  # validate the structure of the decoded array.
+
+  - id: codevigilant.php.wordpress.settings.option_write.unsanitized_json
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    message: |
+      JSON payload originating from user input is decoded and written to an
+      option without sanitizing the decoded values. Raw HTML/script embedded
+      in the JSON is stored as-is and later rendered by WordPress core or the
+      theme (admin menus, listings, notices), enabling stored XSS from a
+      crafted import. Sanitize every decoded value (sanitize_text_field(),
+      wp_kses_post(), etc.) and validate the structure before update_option().
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: json_decode($X, ...)
+              - pattern: json_decode($X)
+          - pattern-inside: |
+              json_decode(..., true)
+          - focus-metavariable: $X
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: wp_unslash($_POST[...])
+              - pattern: stripslashes_deep($_POST[...])
+              - pattern: trim($_POST[...])
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: update_option($KEY, $VALUE)
+              - pattern: add_option($KEY, $VALUE)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_email(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_title(...)
+              - pattern: sanitize_url(...)
+              - pattern: sanitize_file_name(...)
+              - pattern: wp_kses_post(...)
+              - pattern: esc_html(...)
+              - pattern: esc_attr(...)
+              - pattern: absint(...)
+              - pattern: intval(...)
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/update_option/
+      source: CodeVigilant
+      license: MIT

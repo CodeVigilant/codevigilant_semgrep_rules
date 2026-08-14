@@ -1,0 +1,60 @@
+rules:
+  # ============================================================================
+  # Insecure deserialization via verbatim post-meta copy
+  # Shape: a meta value read from one object (get_post_meta / get_post_custom /
+  # get_metadata) is written back into another object's meta
+  # (update_post_meta / add_post_meta) without validation. WordPress runs
+  # maybe_unserialize() on meta values at read time, so a copied value that
+  # contains a PHP-serialized object (O:/C: markers, possibly nested inside
+  # serialized arrays) is unserialized later and instantiates arbitrary classes.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.insecure_deserialization.postmeta.copy_unserialized.taint
+    mode: taint
+    message: |
+      Detected a meta value read from one object being written verbatim into
+      another object's meta without validation. Meta values retrieved with
+      get_post_meta()/get_post_custom()/get_metadata() may contain
+      PHP-serialized data, including serialized objects. When such a value is
+      copied into another post's meta via update_post_meta()/add_post_meta(),
+      WordPress later runs maybe_unserialize() on it during a meta read, which
+      can instantiate arbitrary classes (PHP object injection). Validate or
+      re-encode the value (e.g. reject serialized object markers) before
+      copying meta between objects.
+    severity: HIGH
+    languages: [php]
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: get_post_meta(...)
+              - pattern: get_post_custom(...)
+              - pattern: get_post_custom_keys(...)
+              - pattern: get_metadata(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: update_post_meta($POST_ID, $KEY, $VALUE)
+              - pattern: add_post_meta($POST_ID, $KEY, $VALUE)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_meta(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: esc_attr(...)
+              - pattern: esc_html(...)
+              - pattern: wp_kses_post(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+        - https://developer.wordpress.org/reference/functions/maybe_unserialize/
+      source: ai-anant
+      license: MIT

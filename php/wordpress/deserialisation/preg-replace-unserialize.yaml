@@ -1,0 +1,50 @@
+rules:
+  # ============================================================================
+  # INCOMPLETE OBJECT NEUTRALIZATION BEFORE unserialize() (CWE-502)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags code that tries to "sanitize" serialized data by rewriting object
+  # markers with a regular expression (e.g. preg_replace('/O:\d+:"[^"]+":/',
+  # 'O:8:"stdClass":', $data)) before passing it to unserialize() or
+  # maybe_unserialize(). Such regex-based neutralization is incomplete:
+  # PHP's C: serialization format (custom Serializable objects) is not
+  # matched by O:-oriented patterns, so attacker-controlled C: payloads
+  # still reach unserialize() and can instantiate gadgets
+  # (PHP object injection / POP chains). Only rewrite-based neutralization
+  # is insufficient; use unserialize($data, ['allowed_classes' => false])
+  # or json_decode() for untrusted data.
+
+  - id: codevigilant.php.wordpress.deserialisation.file.preg_replace_unserialize.incomplete_object_neutralization
+    message: >-
+      Serialized data is rewritten with preg_replace() (object-marker
+      neutralization) and then passed to unserialize()/maybe_unserialize().
+      Regex-based neutralization of O: objects is incomplete: C: custom
+      Serializable payloads bypass the rewrite and still reach unserialize(),
+      enabling PHP object injection when the data is attacker-influenceable.
+      Use unserialize($data, ['allowed_classes' => false]) or json_decode().
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DATA = preg_replace($REGEX, $REPLACEMENT, $DATA);
+              ...
+              unserialize($DATA);
+          - pattern: |
+              $DATA = preg_replace($REGEX, $REPLACEMENT, $DATA);
+              ...
+              maybe_unserialize($DATA);
+      - pattern-not-regex: allowed_classes
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Insecure Deserialization"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+        - https://www.php.net/manual/en/function.unserialize.php
+      source: Generic (CodeVigilant)
+      license: MIT
