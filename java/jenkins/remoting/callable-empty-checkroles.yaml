@@ -1,0 +1,36 @@
+rules:
+  - id: codevigilant.java.jenkins.remoting.callable.empty-checkroles
+    patterns:
+      - pattern-either:
+          - pattern: |
+              public void checkRoles(RoleChecker $RC) throws SecurityException {}
+          - pattern: |
+              public void checkRoles(RoleChecker $RC) {}
+    message: |
+      Detected a hudson.remoting.Callable implementation whose checkRoles()
+      override has an empty body. checkRoles() is invoked on the receiving
+      side of a remoting call to verify that the Callable's execution
+      context is acceptable; overriding it with an empty body disables that
+      verification, so the Callable (and any Serializable payload it carries
+      — BuildListener handles, EnvVars with bound credentials, Secret
+      fields, etc.) is accepted and executed without role validation.
+      Malicious or compromised agents can invoke such Callables in
+      restricted contexts, and sensitive payloads are deserialized on
+      agents that were never verified. Implement a real check
+      (e.g. roleChecker.check(this, Roles.ROLE_MASTER)) or, when the
+      Callable must run unverified, document why and keep the payload free
+      of secrets.
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/remoting/
+        - https://www.jenkins.io/redirect/remoting/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH

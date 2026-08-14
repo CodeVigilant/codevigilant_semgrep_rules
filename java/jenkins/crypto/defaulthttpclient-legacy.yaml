@@ -1,0 +1,31 @@
+rules:
+  - id: codevigilant.java.jenkins.crypto.ssl.defaulthttpclient
+    patterns:
+      - pattern-either:
+          - pattern: new DefaultHttpClient()
+          - pattern: new DefaultHttpClient($ARGS)
+    message: |
+      Detected construction of the legacy org.apache.http.impl.client.DefaultHttpClient.
+      The class is deprecated: it predates explicit TLS-version and certificate
+      hardening controls, and its API lacks first-class connect/socket/response
+      timeout configuration, so requests commonly run without timeouts (a hanging
+      or attacker-controlled endpoint blocks the calling thread indefinitely) and
+      without TLS version pinning (protocol downgrade towards SSLv3/TLS1.0 remains
+      possible on older TLS stacks, enabling man-in-the-middle interception of any
+      credentials sent in the request). Prefer HttpClientBuilder /
+      HttpClients.custom() with explicit TLS versions and connect, socket and
+      response timeouts.
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://hc.apache.org/httpcomponents-client-4.5.x/migration-guide.html
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
