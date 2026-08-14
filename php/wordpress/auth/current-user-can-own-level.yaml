@@ -1,0 +1,77 @@
+rules:
+  # ============================================================================
+  # CAPABILITY CHECK AGAINST THE CURRENT USER'S OWN LEVEL (TAUTOLOGY)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # A capability check whose argument is the *current user's own* user level
+  # (e.g. a helper named get_user_level()/user_level that resolves the level
+  # of the logged-in user) is a tautology: current_user_can() then always
+  # returns true for every authenticated user, so the authorization gate never
+  # blocks anyone. This typically happens when a plugin tries to honour a
+  # legacy numeric 'minimum level' setting but resolves the level from the
+  # current session instead of from the stored configuration.
+  #
+  # CWE-863: Incorrect Authorization
+
+  - id: codevigilant.php.wordpress.auth.current_user_can_own_level
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # direct: current_user_can($obj->get_user_level())
+          - patterns:
+              - pattern: current_user_can($OBJ->$METHOD(...))
+              - metavariable-regex:
+                  metavariable: $METHOD
+                  regex: (?i).*level.*
+          # direct: current_user_can(get_user_level())
+          - patterns:
+              - pattern: current_user_can($FUNC(...))
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: (?i).*level.*
+          # direct property: current_user_can($user->user_level)
+          - patterns:
+              - pattern: current_user_can($OBJ->$PROP)
+              - metavariable-regex:
+                  metavariable: $PROP
+                  regex: (?i).*level.*
+          # indirect: $cap = $obj->get_user_level(); ...; current_user_can($cap);
+          - patterns:
+              - pattern-inside: |
+                  $CAP = $OBJ->$METHOD(...);
+                  ...
+                  current_user_can($CAP);
+              - metavariable-regex:
+                  metavariable: $METHOD
+                  regex: (?i).*level.*
+          # indirect: $cap = get_user_level(); ...; current_user_can($cap);
+          - patterns:
+              - pattern-inside: |
+                  $CAP = $FUNC(...);
+                  ...
+                  current_user_can($CAP);
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: (?i).*level.*
+    message: |
+      Detected a capability check that uses the current user's own user level
+      as the required capability. current_user_can(get_user_level()) (or a
+      variable assigned from such a helper) is always true for any logged-in
+      user, so the authorization check is a no-op and every authenticated user
+      passes it. Resolve the required capability from stored configuration or
+      a fixed capability name (e.g. 'manage_options'), never from the
+      requesting user's own level.
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+      source: CodeVigilant
+      license: MIT
