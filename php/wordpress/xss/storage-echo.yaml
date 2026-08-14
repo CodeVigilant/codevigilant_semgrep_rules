@@ -1,0 +1,72 @@
+rules:
+  # ============================================================================
+  # STORED XSS — UNESCAPED OUTPUT OF WORDPRESS STORAGE DATA
+  # Generic pattern: values read from WordPress storage (post meta, options,
+  # user meta, terms, transients, site options) are echoed/printed without an
+  # escaping function. Stored data is attacker-influencable through lower-
+  # privileged roles or other plugins, so unescaped output is a stored XSS sink.
+  # The direct-superglobal case is covered by `basic_xss.yaml`; this rule covers
+  # the storage-sourced case.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.xss.storage.echo.unescaped
+    message: |
+      Detected unescaped output of WordPress storage data.
+      A value read from storage (get_post_meta, get_option, get_user_meta,
+      get_term_meta, get_transient, etc.) is echoed or printed without an
+      escaping function. Stored values can be influenced by lower-privileged
+      users or other plugins; output them with esc_html(), esc_attr(),
+      esc_url() or wp_kses() to prevent stored XSS.
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: get_post_meta(...)
+              - pattern: get_option(...)
+              - pattern: get_site_option(...)
+              - pattern: get_user_meta(...)
+              - pattern: get_term_meta(...)
+              - pattern: get_comment_meta(...)
+              - pattern: get_transient(...)
+              - pattern: get_post_field(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: echo $...VAR;
+              - pattern: print $...VAR;
+              - pattern: printf($...VAR, ...);
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: esc_html(...)
+              - pattern: esc_attr(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: esc_textarea(...)
+              - pattern: esc_js(...)
+              - pattern: htmlspecialchars(...)
+              - pattern: htmlentities(...)
+              - pattern: wp_kses(...)
+              - pattern: wp_kses_post(...)
+              - pattern: wp_strip_all_tags(...)
+              - pattern: strip_tags(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_title(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+              - pattern: rawurlencode(...)
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/apis/security/securing-output/
+        - https://owasp.org/www-community/attacks/xss/
+      source: CodeVigilant Original
+      license: MIT
