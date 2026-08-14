@@ -1,0 +1,72 @@
+rules:
+  # ============================================================================
+  # XXE RULES (XML External Entity)
+  # Generic vulnerable shapes in Java/Jenkins code:
+  #   - DocumentBuilderFactory/TransformerFactory used without disabling
+  #     DOCTYPE declarations / external entities before parsing untrusted XML
+  #     (SCM server output, webhook bodies, uploaded files, remote responses).
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.xxe.documentbuilderfactory-disallow-doctype-decl-missing
+    message: >-
+      DocumentBuilderFactory is used to parse XML without disabling DOCTYPE
+      declarations or external entities. When the parsed XML is derived from a
+      network/service response or an untrusted file, an attacker can inject a
+      DOCTYPE with external entities to read local files or probe internal
+      services (XXE). Harden the factory before parsing, e.g.:
+      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+      and disable external-general-entities / external-parameter-entities.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB = $FACTORY.newDocumentBuilder();
+          - pattern: |
+              $FACTORY.newDocumentBuilder().parse($XML);
+      - pattern-not-inside: |
+          $FACTORY.setFeature(...);
+          ...
+      - pattern-not-inside: |
+          $FACTORY.setAttribute(...);
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology:
+        - java
+        - jenkins
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+        - https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html#java
+      source: ai-anant
+      license: MIT
+
+  - id: codevigilant.java.jenkins.xxe.transformerfactory-dtds-not-disabled
+    message: >-
+      TransformerFactory is used without restricting external DTD access.
+      Set the attributes XMLConstants.ACCESS_EXTERNAL_DTD and
+      XMLConstants.ACCESS_EXTERNAL_STYLESHEET to "" before creating the
+      transformer to prevent XXE when transforming untrusted XML documents.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern: |
+          $FACTORY.newTransformer();
+      - pattern-not-inside: |
+          $FACTORY.setAttribute(...);
+          ...
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology:
+        - java
+        - jenkins
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+      source: ai-anant
+      license: MIT
