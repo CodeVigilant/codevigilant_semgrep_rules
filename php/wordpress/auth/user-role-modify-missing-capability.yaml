@@ -1,0 +1,52 @@
+rules:
+  - id: codevigilant.php.wordpress.auth.user_role_modify_missing_capability
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: $USER->add_role($ROLE)
+          - pattern: $USER->remove_role($ROLE)
+          - pattern: $USER->set_role($ROLE)
+          - pattern: $USER->add_cap($CAP)
+          - pattern: $USER->remove_cap($CAP)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (current_user_can(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (!current_user_can(...)) {
+              ...
+            }
+            ...
+          }
+    message: |
+      A WP_User role/capability mutation (add_role/remove_role/set_role/add_cap/
+      remove_cap) is performed inside a function that contains no capability check
+      (current_user_can). Without an authorization gate - or when the gate lives only
+      in a caller - a lower-privileged actor may modify arbitrary users' roles,
+      including privilege escalation (CWE-269/CWE-862). Verify the enclosing function
+      is guarded or add an explicit capability check (e.g. edit_user on the target).
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wp_user/add_role/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+      source: CodeVigilant
+      license: MIT
