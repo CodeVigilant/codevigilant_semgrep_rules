@@ -1,0 +1,84 @@
+rules:
+  # ============================================================================
+  # CLEARTEXT HTTP URL FLOWING INTO OUTBOUND WP REMOTE REQUESTS VIA VARIABLES
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags wp_remote_*() calls whose URL argument is (or is derived from) an
+  # http:// string literal or an https->http scheme downgrade, when the URL is
+  # first stored in a variable / object property / array element. The existing
+  # cleartext-http-request rule only matches the literal inline at the call
+  # site; this rule covers the indirection shapes that bypass it
+  # (e.g. private $url = 'http://...' read later, $endpoint = $this->url,
+  # str_replace('https://','http://', ...)). Cleartext transmission lets
+  # on-path observers capture request data and tamper with responses
+  # (CWE-319); scheme downgrade on failure re-introduces the same risk for
+  # keyed/authenticated endpoints.
+
+  - id: codevigilant.php.wordpress.ssrf.cleartext_http_variable_request
+    severity: WARNING
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern: $STR
+          - metavariable-regex:
+              metavariable: $STR
+              regex: "^('|\")http://"
+      - pattern: str_replace("https://", "http://", $URL)
+      - pattern: str_replace('https://', 'http://', $URL)
+    pattern-propagators:
+      - pattern: $NEW = $LEFT . $RIGHT
+        from: $LEFT
+        to: $NEW
+      - pattern: $NEW = $LEFT . $RIGHT
+        from: $RIGHT
+        to: $NEW
+      - pattern: $NEW .= $PART
+        from: $PART
+        to: $NEW
+      - pattern: $PROP = $V
+        from: $V
+        to: $PROP
+      - pattern: $THIS->$PROP = $V
+        from: $V
+        to: $THIS->$PROP
+      - pattern: $NEW = $THIS->$PROP
+        from: $THIS->$PROP
+        to: $NEW
+      - pattern: $ARR[$IDX] = $V
+        from: $V
+        to: $ARR[$IDX]
+      - pattern: $NEW = $ARR[$IDX]
+        from: $ARR[$IDX]
+        to: $NEW
+    pattern-sinks:
+      - pattern-either:
+          - pattern: wp_remote_get($URL)
+          - pattern: wp_remote_get($URL, ...)
+          - pattern: wp_remote_post($URL)
+          - pattern: wp_remote_post($URL, ...)
+          - pattern: wp_remote_request($URL, ...)
+          - pattern: wp_remote_head($URL, ...)
+          - pattern: wp_safe_remote_get($URL, ...)
+          - pattern: wp_safe_remote_post($URL, ...)
+          - pattern: wp_safe_remote_request($URL, ...)
+    message: |
+      An http:// URL (or an https->http downgrade) stored in a variable,
+      property or array element reaches an outbound wp_remote_*() call.
+      Cleartext HTTP lets on-path observers read request data and tamper with
+      responses (CWE-319); the inline-literal shape is covered by the
+      cleartext-http-request rule. Use https:// endpoints and fail closed on
+      TLS errors instead of downgrading.
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/Top10/A02_2021-Cryptographic_Failures/
+        - https://developer.wordpress.org/plugins/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/esc_url/
+      source: CodeVigilant
+      license: MIT
