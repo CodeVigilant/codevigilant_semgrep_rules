@@ -1,0 +1,40 @@
+rules:
+  # ============================================================================
+  # XSS: JS STRING SERIALIZATION WITHOUT SCRIPT-CLOSE NEUTRALIZATION
+  # ----------------------------------------------------------------------------
+  # A value escaped ONLY against quotes (addcslashes/addslashes) and then
+  # embedded inside an inline <script> block can break out of the script
+  # context: quote escaping does not neutralize the `</script>` closing-tag
+  # sequence. A string containing `</script><script>...` terminates the
+  # surrounding script element and injects arbitrary HTML/JavaScript.
+  #
+  # Safe alternatives: json_encode() with JSON_HEX_TAG (and JSON_HEX_AMP/QUOT),
+  # or explicitly case-insensitive str_replace of '</script>' before embedding.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.xss.serialization.unescaped_script_close
+    message: |
+      Detected a value escaped only against quotes (addcslashes/addslashes) for use
+      in a JavaScript string. Quote escaping does NOT neutralize the `</script>`
+      closing-tag sequence: when the value is embedded inside an inline <script>
+      block, input containing `</script>` breaks out of the script context and
+      allows HTML/JavaScript injection (CWE-79). Use json_encode() with
+      JSON_HEX_TAG, or explicitly strip/replace `</script>` (case-insensitive)
+      before embedding values into script blocks.
+    severity: HIGH
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: addcslashes($VALUE, "'")
+          - pattern: addslashes($VALUE)
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/xss/
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+      source: codevigilant
+      license: MIT

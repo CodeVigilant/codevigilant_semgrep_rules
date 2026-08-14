@@ -1,0 +1,41 @@
+rules:
+  # ============================================================================
+  # DOM-BASED XSS IN JQUERY HTML SINKS
+  # Generic shape: a variable is concatenated into an HTML-building string
+  # passed to jQuery .append()/.html()/.prepend() without an escaping function.
+  # ============================================================================
+  - id: codevigilant.javascript.wordpress.xss.dom.jquery_html_concat_taint
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $OBJ.append(<... "..." + $SINK ...>);
+          - pattern: |
+              $OBJ.html(<... "..." + $SINK ...>);
+          - pattern: |
+              $OBJ.prepend(<... "..." + $SINK ...>);
+          - pattern: |
+              $OBJ.append(<... $SINK + "..." ...>);
+          - pattern: |
+              $OBJ.html(<... $SINK + "..." ...>);
+          - pattern: |
+              $OBJ.prepend(<... $SINK + "..." ...>);
+      - pattern-not-regex: '(esc_html|escapeHtml|wp_sanitize|sanitize_text|\.text\([^)]*\)\.html\()'
+    message: |
+      Detected potential DOM-based XSS in jQuery code.
+      A variable is concatenated into an HTML-building string passed to
+      .append(), .html(), or .prepend() without an escaping function
+      (esc_html(), .text()). Escape server-controlled or user-controlled
+      values before inserting them into the DOM, or build DOM nodes with
+      .text() instead of string concatenation.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/securing-output/
+        - https://owasp.org/www-community/attacks/DOM_Based_XSS
+    languages: [javascript]
+    mode: search
+    severity: HIGH

@@ -1,0 +1,77 @@
+rules:
+  # ============================================================================
+  # OPTION VALUE OUTPUT WITHOUT ESCAPING (CWE-79)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # WordPress stores many settings/options without sanitizing HTML (options set
+  # via update_option() are stored verbatim), and plugins routinely render
+  # option values into admin/front-end markup with echo / print / sprintf.
+  # When a value fetched from the options table is interpolated into HTML
+  # without an escaping function (esc_html / esc_attr / esc_url / wp_kses ...),
+  # a stored XSS is possible: whoever can influence the stored option (another
+  # admin, a compromised upstream API the plugin mirrors into options, a
+  # settings-import feature, etc.) can inject markup that executes in the
+  # session of every user who views the page.
+  #
+  # Taint mode: sources are the WordPress option accessors, sinks are echo /
+  # print / sprintf / printf / vsprintf output statements, sanitizers are the
+  # standard WordPress escaping functions.
+
+  - id: codevigilant.php.wordpress.xss.option.unescaped_output
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: get_option(...)
+              - pattern: \get_option(...)
+              - pattern: get_site_option(...)
+              - pattern: \get_site_option(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: echo $...VAR;
+              - pattern: print $...VAR;
+              - pattern: sprintf($FORMAT, ..., $...VAR, ...)
+              - pattern: printf($FORMAT, ..., $...VAR, ...)
+              - pattern: vsprintf($FORMAT, $...VAR)
+              - pattern: vprintf($FORMAT, $...VAR)
+    message: |
+      Detected XSS vulnerability in WordPress.
+      A value retrieved from the options table via get_option()/get_site_option() is output
+      without an escaping function. Options are stored verbatim and may contain HTML controlled
+      by other administrators or by upstream data imported into the option.
+      Use esc_html(), esc_attr(), esc_url(), or wp_kses() to properly escape output.
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: esc_html(...)
+              - pattern: esc_attr(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: esc_js(...)
+              - pattern: esc_textarea(...)
+              - pattern: htmlspecialchars(...)
+              - pattern: htmlentities(...)
+              - pattern: wp_kses(...)
+              - pattern: wp_kses_post(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_textarea_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+              - pattern: wp_json_encode(...)
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/get_option/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/Security/EscapeOutputSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT

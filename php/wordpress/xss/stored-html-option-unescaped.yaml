@@ -1,0 +1,80 @@
+rules:
+  # ============================================================================
+  # STORED XSS: UNESCAPED VALUE CONCATENATED INTO AN HTML <option> TAG
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags HTML <option> elements built by string concatenation where the
+  # interpolated value is emitted without an escaping function
+  # (esc_attr/esc_html/htmlspecialchars). The value is typically a stored
+  # name/label (database option, term name, uploaded-file title, settings
+  # entry) that an attacker with any write access to the underlying data can
+  # poison. When the value is later rendered into the attribute or text
+  # position of the <option> tag for an administrator, the payload executes
+  # in the admin session (stored XSS, CWE-79).
+  #
+  # sanitize_text_field()/sanitize_title() do NOT neutralize this class of
+  # payload: they strip tags but preserve quotes, so an attribute-breakout
+  # such as `" onfocus="alert(1)` survives unchanged.
+  #
+  # CWE-79: Improper Neutralization of Input During Web Page Generation
+
+  - id: codevigilant.php.wordpress.xss.stored.html_option_unescaped
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $HTML .= '<option value="' . $VAL . '">' . $VAL . '</option>';
+          - pattern: |
+              $HTML = '<option value="' . $VAL . '">' . $VAL . '</option>';
+          - pattern: |
+              $HTML .= "<option value=\"$VAL\">$VAL</option>";
+          - pattern: |
+              $HTML .= '<option>' . $VAL . '</option>';
+      # Exclude values that were escaped before concatenation
+      - pattern-not: |
+          $VAL = esc_attr(...);
+      - pattern-not: |
+          $VAL = esc_html(...);
+      - pattern-not: |
+          $VAL = esc_attr_e(...);
+      - pattern-not: |
+          $VAL = esc_html_e(...);
+      - pattern-not: |
+          $VAL = htmlspecialchars(...);
+      - pattern-not: |
+          $VAL = htmlentities(...);
+      - pattern-not: |
+          $VAL = wp_kses(...);
+      - pattern-not: |
+          $VAL = wp_kses_post(...);
+      - pattern-not: |
+          $VAL = esc_url(...);
+      - pattern-not: |
+          $VAL = esc_url_raw(...);
+      - pattern-not: |
+          $VAL = esc_js(...);
+    message: |
+      An HTML <option> element is assembled by concatenation and the
+      interpolated value $VAL is not passed through an output-escaping
+      function. If $VAL derives from stored data (option, meta, term or file
+      name) that any other user can influence, a payload such as
+      `" autofocus onfocus="alert(document.cookie)` survives weak
+      sanitizers (sanitize_text_field strips tags but keeps quotes) and
+      executes when an administrator views the page (stored XSS, CWE-79).
+      Escape the value in the attribute position with esc_attr() and in the
+      text position with esc_html() before concatenation.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/esc_attr/
+        - https://developer.wordpress.org/reference/functions/esc_html/
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,67 @@
+rules:
+  # ============================================================================
+  # PERMISSIVE WP_KSES ALLOWLIST ON UNTRUSTED INPUT (HTML / LINK INJECTION)
+  #
+  # wp_kses() with the default 'post' allowlist (or any allowlist permitting
+  # <a href> / <img src> style tags) neutralizes script payloads and event
+  # handlers, but it does NOT fully neutralize HTML: an attacker-controlled
+  # string rendered through it can still inject arbitrary hyperlinks, images
+  # (tracking pixels), headings, and other markup into the page (CWE-80).
+  #
+  # This rule flags untrusted (superglobal-derived) input that reaches
+  # wp_kses()/wp_kses_post(). The vulnerable code shape is generic:
+  #   echo wp_kses($_GET['q'], wp_kses_allowed_html('post'));
+  #
+  # Plain-text output should use esc_html(); if HTML is genuinely required the
+  # input must first be sanitized (sanitize_text_field() etc.) and the
+  # allowlist restricted to the exact tags/attributes needed.
+  # ============================================================================
+  - id: codevigilant.php.wordpress.xss.wpkses.permissive-allowlist
+    message: |
+      Untrusted (superglobal-derived) data is passed to wp_kses()/wp_kses_post()
+      with a permissive allowlist (e.g. wp_kses_allowed_html('post'), which permits
+      <a href> and <img src> tags). Script payloads and event handlers are stripped,
+      but reflected HTML/link/image injection (CWE-80) remains possible: an attacker
+      can inject arbitrary hyperlinks, tracking images, or markup into the rendered
+      page. For plain-text output use esc_html(); if HTML is truly required, sanitize
+      the input first (e.g. sanitize_text_field()) and restrict the allowlist to the
+      exact tags/attributes needed.
+    severity: WARNING
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET[...]
+      - pattern: $_POST[...]
+      - pattern: $_REQUEST[...]
+      - pattern: $_COOKIE[...]
+      - pattern: $_SERVER[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_kses($...VAR, $...ALLOW)
+              - pattern: wp_kses_post($...VAR)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: esc_html(...)
+              - pattern: esc_attr(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: esc_textarea(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_title(...)
+              - pattern: absint(...)
+              - pattern: intval(...)
+              - pattern: wp_strip_all_tags(...)
+    metadata:
+      category: security
+      cwe: "CWE-80: Improper Neutralization of Script-Related HTML Tags in a Web Page (Basic XSS)"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/securing-output/
+        - https://owasp.org/www-community/attacks/xss/
+      source: codevigilant
+      license: MIT

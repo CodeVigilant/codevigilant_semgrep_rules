@@ -1,0 +1,67 @@
+rules:
+  # ============================================================================
+  # UNESCAPED RETURN VALUE FROM WP_LIST_TABLE COLUMN_* METHODS (STORED XSS)
+  #
+  # WP_List_Table column_* methods return HTML fragments that the framework
+  # prints directly into the admin page. When such a method returns stored
+  # data (an object property or array element) without passing it through an
+  # escaping function, an attacker who controls the stored value (e.g. data
+  # saved from user submissions) can inject markup/scripts into the admin UI
+  # (stored XSS, CWE-79).
+  #
+  # The vulnerable code shape is generic:
+  #   protected function column_name( $item ) {
+  #       return $item->some_field;   // no esc_html()/esc_attr()/wp_kses()
+  #   }
+  #
+  # Safe shapes (escaped, sprintf-wrapped, or framework-rendered helpers) are
+  # excluded via pattern-not. Confidence is MEDIUM because the rule matches
+  # the code shape only; the stored value's origin must be confirmed manually.
+  # ============================================================================
+  - id: codevigilant.php.wordpress.xss.list_table.column_unescaped_return
+    message: |
+      WP_List_Table column_* method returns stored data without an escaping
+      function. column_* return values are printed directly by the framework,
+      so unescaped stored data can lead to stored XSS (CWE-79) when the value
+      is attacker-controlled. Wrap the returned value in esc_html()/esc_attr()
+      (or wp_kses() if HTML is genuinely required).
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: |
+          function $FUNC($...ARGS) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: '^column_.*$'
+      - pattern-either:
+          - pattern: return $OBJ->$PROP;
+          - pattern: return $ARR[$KEY];
+      - pattern-not: return esc_html(...);
+      - pattern-not: return esc_attr(...);
+      - pattern-not: return esc_url(...);
+      - pattern-not: return esc_url_raw(...);
+      - pattern-not: return esc_textarea(...);
+      - pattern-not: return esc_js(...);
+      - pattern-not: return wp_kses(...);
+      - pattern-not: return wp_kses_post(...);
+      - pattern-not: return wp_kses_data(...);
+      - pattern-not: return htmlspecialchars(...);
+      - pattern-not: return htmlentities(...);
+      - pattern-not: return sprintf(...);
+      - pattern-not: return $this->row_actions(...);
+      - pattern-not: return '';
+      - pattern-not: return $OBJ->id();
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/classes/wp_list_table/
+      source: bug-hunting review pattern
+      license: MIT
