@@ -1,0 +1,37 @@
+rules:
+  - id: codevigilant.java.jenkins.crypto.starttls-fail-open
+    message: >-
+      LDAP StartTLS upgrade (extendedOperation(new StartTlsRequest())) is
+      attempted, but the surrounding catch block recovers by re-creating the
+      initial LDAP context so execution continues over the plaintext
+      connection instead of aborting authentication. If the TLS upgrade is
+      refused (e.g. by an on-path attacker or a legacy server), bind
+      credentials are then transmitted in cleartext (STARTTLS downgrade).
+      Abort the operation (close the connection and fail the authentication)
+      when the StartTLS negotiation fails.
+    severity: HIGH
+    languages: [java]
+    patterns:
+      - pattern: $CTX.extendedOperation(new StartTlsRequest())
+      - pattern-inside: |
+          try {
+            ...
+          } catch (...) {
+            ...
+            $CTX2 = new InitialLdapContext($ENV, ...);
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology:
+        - jenkins
+        - java
+        - ldap
+      confidence: MEDIUM
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html
+        - https://datatracker.ietf.org/doc/html/rfc4513
+      source: ai-anant
+      license: MIT
