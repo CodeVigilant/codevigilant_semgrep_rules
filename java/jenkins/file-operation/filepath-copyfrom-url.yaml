@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.java.jenkins.file-operation.filepath.copyfrom-url
+    patterns:
+      - pattern: $FP.copyFrom($URL)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-either:
+                - pattern: new URL(...)
+                - pattern: (URL $U)
+      - pattern-not: $FP.copyFrom(new URL("..."))
+    message: |
+      Detected hudson.FilePath.copyFrom called with a non-literal URL.
+      copyFrom(URL) opens an outbound connection to the given URL and writes
+      the response body into the FilePath on the local node. In Jenkins
+      plugins the URL frequently originates from a remote server response
+      (report/download links), job configuration or build parameters expanded
+      at runtime. An attacker who can influence the resolved value can make
+      the agent/controller fetch arbitrary internal or external URLs
+      (server-side request forgery) and can steer the fetched content into an
+      attacker-chosen destination path, enabling arbitrary file writes on the
+      node. When the URL is not fully trusted, validate its scheme and host
+      against an allow-list, add connect/read timeouts, and constrain the
+      destination with FilePath.child(...) plus an isDescendant containment
+      check before fetching.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/#server-side-request-forgery-ssrf
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
