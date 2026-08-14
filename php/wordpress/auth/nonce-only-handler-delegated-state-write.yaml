@@ -1,0 +1,130 @@
+rules:
+  # ============================================================================
+  # NONCE-VERIFIED AJAX HANDLER WITH DELEGATED STATE WRITE, NO CAPABILITY CHECK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags functions that verify a nonce (inline wp_verify_nonce /
+  # check_ajax_referer, or via a helper method named like *nonce* / *referer*)
+  # and then persist state through a delegated writer (an object method named
+  # save()/update()/write(), e.g. a settings model ->save()) WITHOUT any
+  # capability check (current_user_can) in the same function.
+  #
+  # A nonce only proves the request originated from a page the caller loaded; it
+  # is not an authorization control (CWE-862). This rule complements
+  # nonce_verified_missing_capability, which only catches state writes that
+  # appear directly in the handler body (update_option/update_user_meta/$wpdb->
+  # ...) and misses handlers that delegate the write to a helper object, which
+  # is the common shape for settings-model classes.
+  #
+  # Handlers registered for logged-out users (wp_ajax_nopriv_*) additionally
+  # accept nonces any anonymous visitor can mint for their own session, so a
+  # nonce-only handler there is effectively unauthenticated.
+
+  - id: codevigilant.php.wordpress.auth.ajax.nonce_only_handler_delegated_state_write
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      # --- delegated state write ---
+      - pattern-either:
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  $OBJ->save();
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  $OBJ->update(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  $OBJ->write(...);
+                  ...
+              }
+      # --- nonce verified inline or via a nonce/referer-named helper call ---
+      - pattern-either:
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+              }
+          - patterns:
+              - pattern-either:
+                  - pattern: |
+                      function $FUNC(...) {
+                          ...
+                          if (!$THIS->$NONCE_HELPER(...)) { ... }
+                          ...
+                      }
+                  - pattern: |
+                      function $FUNC(...) {
+                          ...
+                          if ($THIS->$NONCE_HELPER(...)) { ... }
+                          ...
+                      }
+                  - pattern: |
+                      function $FUNC(...) {
+                          ...
+                          $THIS->$NONCE_HELPER(...);
+                          ...
+                      }
+              - metavariable-regex:
+                  metavariable: $NONCE_HELPER
+                  regex: (?i).*(nonce|referer).*
+      # Exclude functions that perform a capability check anywhere in the body.
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              current_user_can(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (!current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              user_can(...);
+              ...
+          }
+    message: |
+      Nonce-verified handler persists state through a delegated writer
+      ($OBJ->save()/update()/write()) without a current_user_can() capability
+      check in the same function. A nonce authenticates request origin but does
+      not authorize the action: any user able to obtain a valid nonce for their
+      own session (including anonymous visitors when the handler is registered
+      for wp_ajax_nopriv_*) can trigger the write. Add an explicit capability
+      check before the state write.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,81 @@
+rules:
+  # ============================================================================
+  # JWT PAYLOAD DECODED VIA BASE64 AND USED AS AUTH CONTEXT (NO SIGNATURE CHECK)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags authentication functions (get_token / authenticate / auth / token /
+  # decode / parse *) that decode the payload segment of a JWT with a raw
+  # base64 decoder (JWT::urlsafeB64Decode / base64_decode of the middle
+  # dot-separated segment) and return that attacker-written JSON object as the
+  # authenticated request context. Because the payload is never signature-
+  # verified, ANY caller can mint a token with arbitrary claims (issuer, scopes,
+  # merchant/client identifiers) and be treated as authenticated/authorized
+  # (CWE-287 Improper Authentication / CWE-306 Missing Authentication).
+  #
+  # The safe pattern is JWT::decode($token, $keys, $algo) with a public key /
+  # shared secret, followed by explicit verification of the claims that bind
+  # the token to the current context. The decode_result_discarded rule covers
+  # the "decode but ignore claims" variant; this rule covers the worse
+  # "no signature verification at all" variant.
+
+  - id: codevigilant.php.wordpress.auth.jwt.unsafe_base64_decode_context
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # Firebase\JWT\JWT helper decoder: payload decoded and returned
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  $PAYLOAD = JWT::urlsafeB64Decode(...);
+                  ...
+                  return ...;
+              }
+          # Raw base64_decode of a dot-separated JWT segment
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  $PAYLOAD = base64_decode(...);
+                  ...
+                  return ...;
+              }
+      # Only flag functions that look like token/authentication handlers
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (?i)(get_token|authenticate|auth|token|decode|parse).*
+      # Exclude functions that additionally verify a signature/secret
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              JWT::decode(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              hash_equals(...);
+              ...
+          }
+    message: |
+      JWT payload is decoded with a raw base64 decoder (JWT::urlsafeB64Decode /
+      base64_decode of a token segment) and returned as the authentication
+      context without verifying the token signature. The payload of a JWT is
+      plain attacker-controlled JSON: without signature verification (e.g.
+      JWT::decode with the issuer's public key or a shared secret) any remote
+      caller can forge arbitrary claims (iss, scope, audience, client/merchant
+      ids) and impersonate any principal. Decode with JWT::decode($token, $keys,
+      $algo) and verify the claims that bind the token to the current context.
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/09-Testing_for_Weak_Password_Policy
+        - https://github.com/firebase/php-jwt
+        - https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-token-structure
+      source: CodeVigilant
+      license: MIT

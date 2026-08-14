@@ -1,0 +1,93 @@
+rules:
+  # ============================================================================
+  # REQUEST-DRIVEN TRANSIENT WRITE WITHOUT CAPABILITY CHECK (BROKEN ACCESS CONTROL)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags functions that write WordPress transients (set_transient() /
+  # set_site_transient()) using raw superglobal input ($_POST/$_GET/$_REQUEST/
+  # $_COOKIE) without a capability check (current_user_can()) in the same
+  # function body.
+  #
+  # admin-ajax.php callbacks and other request handlers have no
+  # permission_callback mechanism. A nonce check (check_ajax_referer() /
+  # wp_verify_nonce()) only proves the request is CSRF-protected; it does NOT
+  # authorize the caller. Any authenticated user (e.g. Subscriber) who can
+  # obtain the nonce can therefore invoke such a handler and write arbitrary
+  # site/network transients (CWE-862). Depending on which transient is
+  # overwritten (update metadata, security-plugin counters, caches, ...) this
+  # can corrupt site state, break functionality, or defeat other plugins'
+  # protections; on multisite, set_site_transient() writes network-wide.
+  #
+  # The capability exclusion is function-scoped: the guard must live in the
+  # SAME function as the sink. Transient writes that do not consume raw
+  # superglobals (activation hooks, scheduled events, pure internal caching)
+  # do not match and are not flagged.
+
+  - id: codevigilant.php.wordpress.auth.transient_write_missing_capability
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      # Superglobal input (directly as the transient-name argument, or
+      # assigned to a variable first) flowing into a transient-write sink.
+      - pattern-either:
+          - pattern: |
+              set_transient( $SRC[$KEY], ... );
+          - pattern: |
+              set_site_transient( $SRC[$KEY], ... );
+          - pattern: |
+              $V = <... $SRC[$KEY] ...>;
+              ...
+              set_transient( $V, ... );
+          - pattern: |
+              $V = <... $SRC[$KEY] ...>;
+              ...
+              set_site_transient( $V, ... );
+      # The input must be a raw superglobal ($_POST, $_GET, $_REQUEST, $_COOKIE).
+      - metavariable-regex:
+          metavariable: $SRC
+          regex: '\$_(POST|GET|REQUEST|COOKIE)'
+      # A nonce check is NOT sufficient authorization; only exclude functions
+      # that carry an explicit capability check in the same function body.
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( current_user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( ! current_user_can(...) ) { ... }
+            ...
+          }
+    message: |
+      Detected a request-driven transient write (set_transient()/
+      set_site_transient()) in a function without a capability check in the
+      same function body. Request handlers (including wp_ajax_* callbacks)
+      have no permission_callback: a nonce only prevents CSRF, it does not
+      authorize the caller, so any authenticated user may trigger this write
+      of arbitrary site/network transients (CWE-862). Add current_user_can()
+      with an appropriate capability (or a whitelist for the transient name)
+      before writing.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/plugins/javascript/ajax/
+        - https://developer.wordpress.org/reference/functions/set_transient/
+        - https://developer.wordpress.org/reference/functions/set_site_transient/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,104 @@
+rules:
+  # ============================================================================
+  # CLIENT-CONTROLLED STATE TRUSTED IN CONDITIONAL LOGIC
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags code that makes a decision based on the value or mere presence of a
+  # request cookie ($_COOKIE) without any server-side verification (signature,
+  # HMAC, session store, nonce, capability check). Cookies are fully
+  # attacker-controlled: a client can set any name/value pair and re-send it
+  # at will, so any "if cookie then allow/deny" logic is a broken access
+  # control (CWE-287 / CWE-565) unless the value is authenticated server-side.
+  # Typical vulnerable shape: an "unlock" or "bypass" flag stored in a cookie
+  # and checked with empty()/isset()/equality to gate a protected action.
+
+  - id: codevigilant.php.wordpress.auth.cookie_condition.pattern
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if (!empty($_COOKIE[$KEY])) { ... }
+          - pattern: |
+              if (isset($_COOKIE[$KEY])) { ... }
+          - pattern: |
+              if ($_COOKIE[$KEY]) { ... }
+          - pattern: |
+              if ($_COOKIE[$KEY] == $VALUE) { ... }
+          - pattern: |
+              if ($_COOKIE[$KEY] === $VALUE) { ... }
+      - pattern-not-inside: |
+          if ( wp_verify_nonce(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_admin_referer(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_ajax_referer(...) ) { ... }
+    message: |
+      A decision is made based on the presence or value of the client-
+      controlled $_COOKIE superglobal without server-side verification.
+      Cookies can be forged by any caller, so an access-control or
+      feature-toggle decision based on an unauthenticated cookie value is
+      bypassable (CWE-287/CWE-565). Verify cookie values against a
+      server-side secret (HMAC/hash_equals), a session store, or a proper
+      capability/nonce check before trusting them.
+    metadata:
+      category: security
+      cwe: "CWE-565: Reliance on Cookies without Validation and Integrity Checking"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/data-validation/
+        - https://owasp.org/www-community/attacks/Forced_browsing
+      source: CodeVigilant
+      license: MIT
+
+  # ============================================================================
+  # NEGATED isset() ON REQUEST PARAMETER USED TO SKIP A PROTECTION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags "!isset($_GET[...])" expressions. This shape is commonly used to
+  # disable a security gate whenever a client-supplied query parameter is
+  # present (e.g. "if ... && !isset($_GET[debug]) { enforce_protection }"),
+  # which lets any caller bypass the protection simply by appending the
+  # parameter (CWE-425 / CWE-693). Request parameters must never act as
+  # unauthenticated switches for security-relevant logic.
+
+  - id: codevigilant.php.wordpress.auth.get_negated_isset.pattern
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              !isset($_GET[$KEY])
+          - pattern: |
+              ! isset($_GET[$KEY])
+      - pattern-not-inside: |
+          if ( wp_verify_nonce(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_admin_referer(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_ajax_referer(...) ) { ... }
+    message: |
+      A negated isset() check on the client-controlled $_GET superglobal was
+      found. If this expression gates security-relevant logic (maintenance
+      mode, feature flags, rate limiting, access checks), any caller can
+      disable the protection by supplying the parameter, because the value is
+      not authenticated. Never let a bare request parameter act as a switch
+      for a protection; require a nonce, capability check, or a server-side
+      verified secret instead.
+    metadata:
+      category: security
+      cwe: "CWE-425: Direct Request ('Forced Browsing')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/data-validation/
+        - https://owasp.org/www-community/attacks/Forced_browsing
+      source: CodeVigilant
+      license: MIT

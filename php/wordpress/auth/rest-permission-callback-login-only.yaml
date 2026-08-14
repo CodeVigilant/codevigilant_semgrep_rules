@@ -1,0 +1,151 @@
+rules:
+  # ============================================================================
+  # REST PERMISSION CALLBACK THAT ONLY CHECKS LOGIN STATUS
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags permission_callback methods/functions whose authorization decision is
+  # based solely on the caller being logged in (e.g. `get_current_user_id() > 0`
+  # or `is_user_logged_in()`), with no capability check (current_user_can /
+  # user_can) anywhere in the callback body. On a default WordPress install any
+  # authenticated user - including subscribers - passes such a check, so an
+  # endpoint that exposes site state or performs privileged actions becomes
+  # reachable by every registered user (CWE-862 / CWE-639). This is especially
+  # dangerous in route abstractions/frameworks that build register_rest_route()
+  # arguments dynamically and silently fall back to a shared base-class
+  # permission callback, because the intended per-route capability check can
+  # end up as dead code.
+
+  - id: codevigilant.php.wordpress.auth.rest.permission_callback_login_only
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # Variant A: direct return of login-status check
+          - patterns:
+              - pattern: |
+                  function $FUNC(...) {
+                    ...
+                    return get_current_user_id() > 0;
+                  }
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: .*permission_callback.*
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    current_user_can(...);
+                  }
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    user_can(...);
+                  }
+          # Variant B: negated login-status check
+          - patterns:
+              - pattern: |
+                  function $FUNC(...) {
+                    ...
+                    return 0 !== get_current_user_id();
+                  }
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: .*permission_callback.*
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    current_user_can(...);
+                  }
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    user_can(...);
+                  }
+          # Variant C: is_user_logged_in()
+          - patterns:
+              - pattern: |
+                  function $FUNC(...) {
+                    ...
+                    return is_user_logged_in();
+                  }
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: .*permission_callback.*
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    current_user_can(...);
+                  }
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    user_can(...);
+                  }
+          # Variant D: login-status check on an object/class property holding the user id
+          - patterns:
+              - pattern: |
+                  function $FUNC(...) {
+                    ...
+                    return $OBJ->current_user_id > 0;
+                  }
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: .*permission_callback.*
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    current_user_can(...);
+                  }
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    user_can(...);
+                  }
+          # Variant E: user id stored in a variable, then used as a boolean gate
+          - patterns:
+              - pattern: |
+                  function $FUNC(...) {
+                    ...
+                    $ID = get_current_user_id();
+                    ...
+                    if ($ID > 0) {
+                      ...
+                      return true;
+                    }
+                  }
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: .*permission_callback.*
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    current_user_can(...);
+                  }
+              - pattern-not: |
+                  function $FUNC(...) {
+                    ...
+                    user_can(...);
+                  }
+    message: |
+      REST permission callback '$FUNC' authorizes requests based only on login
+      status (no capability check such as current_user_can()/user_can()). Any
+      authenticated user - including a subscriber on a default install - passes
+      the check. If this endpoint exposes sensitive site data or performs
+      privileged actions, add an explicit capability check (e.g.
+      current_user_can('manage_options')) or a nonce verification inside the
+      permission callback.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#permission-callback
+        - https://developer.wordpress.org/reference/functions/register_rest_route/
+        - https://developer.wordpress.org/reference/functions/get_current_user_id/
+        - https://developer.wordpress.org/reference/functions/is_user_logged_in/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+      source: CodeVigilant
+      license: MIT

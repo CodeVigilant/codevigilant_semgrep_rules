@@ -1,0 +1,66 @@
+rules:
+  # ============================================================================
+  # BROKEN AUTHORIZATION GUARD: NEGATED CHECKS JOINED WITH && INSTEAD OF ||
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags the anti-pattern where an authorization guard negates three user
+  # state checks and joins them with logical AND:
+  #
+  #     if ( ! is_user_logged_in() && ! is_admin() && ! current_user_can(...) )
+  #
+  # The developer's intent is "deny when the user is anonymous OR not on an
+  # admin request OR lacks the capability" (i.e. logical OR). Written with
+  # AND, the guard only fires when ALL THREE conditions hold, which for
+  # admin-ajax.php / admin-post.php requests is never: is_admin() is true on
+  # the admin side, so `! is_admin()` is false and the whole conjunction is
+  # false. The capability check is dead code and the endpoint is guarded by
+  # nothing (or by a nonce only, which is not an authorization boundary).
+  #
+  # CWE-862: Missing Authorization
+  # CWE-306: Missing Authentication for Critical Function
+
+  - id: codevigilant.php.wordpress.auth.ajax.broken_and_chain_authz
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ( ! is_user_logged_in() && ! is_admin() && ! current_user_can(...) ) { ... }
+          - pattern: |
+              if ( ! is_user_logged_in() && ! is_admin() && ! \current_user_can(...) ) { ... }
+          - pattern: |
+              if ( ! is_user_logged_in() && ! is_admin() && ! user_can(...) ) { ... }
+          - pattern: |
+              if ( ! is_user_logged_in() && ! is_admin() && ! \user_can(...) ) { ... }
+      # Exclude the correct form (OR chain), which is not a vulnerability.
+      - pattern-not: |
+          if ( ! is_user_logged_in() || ! is_admin() || ! current_user_can(...) ) { ... }
+      - pattern-not: |
+          if ( ! is_user_logged_in() || ! is_admin() || ! \current_user_can(...) ) { ... }
+      - pattern-not: |
+          if ( ! is_user_logged_in() || ! is_admin() || ! user_can(...) ) { ... }
+      - pattern-not: |
+          if ( ! is_user_logged_in() || ! is_admin() || ! \user_can(...) ) { ... }
+    message: |
+      Authorization guard joins the negated checks
+      is_user_logged_in() / is_admin() / current_user_can() with logical AND
+      instead of OR. On admin-ajax.php and admin-post.php requests
+      is_admin() is always true, so `! is_admin()` is false and the whole
+      condition is never met: the capability check is dead code and the
+      handler is effectively unprotected (CWE-862). Use OR between the
+      negated checks so the request is rejected when the user is anonymous,
+      off the admin side, or missing the required capability.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+        - https://developer.wordpress.org/reference/functions/is_admin/
+      source: CodeVigilant
+      license: MIT

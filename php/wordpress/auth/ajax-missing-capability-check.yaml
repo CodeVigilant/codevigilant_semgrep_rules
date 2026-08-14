@@ -1,0 +1,194 @@
+rules:
+  # ============================================================================
+  # ADMIN-AJAX HANDLER WITH NONCE BUT NO CAPABILITY CHECK (BROKEN ACCESS CONTROL)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags wp_ajax_* handler callbacks that verify a nonce (check_ajax_referer()
+  # / wp_verify_nonce() / check_admin_referer()) but never verify an
+  # authorization capability (current_user_can() / user_can()) anywhere in the
+  # function body.
+  #
+  # A nonce proves the request is intentional (CSRF protection) but says
+  # NOTHING about WHO the logged-in user is. admin-ajax.php has no
+  # permission_callback, so the callback itself must enforce the minimum
+  # capability for the action. Handlers that skip this are reachable by any
+  # logged-in user who can obtain the nonce (nonces are frequently localized
+  # on front-end pages, block editors, and shared admin assets that
+  # lower-privileged roles can access), turning a nonce-only check into a
+  # broken-access-control hole (CWE-862).
+  #
+  # The positive match requires a nonce check so this rule complements (and
+  # does not overlap) codevigilant.php.wordpress.csrf.nonce.missing_ajax_handler,
+  # which flags handlers with no CSRF protection at all.
+  #
+  # NOTE: capability checks delegated to helper functions called from the
+  # handler are not visible to this pattern; treat matches as MEDIUM
+  # confidence and confirm by reading the handler.
+
+  - id: codevigilant.php.wordpress.auth.ajax_missing_capability_check
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      # The handler verifies a nonce (CSRF-protected) ...
+      - pattern-either:
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                check_ajax_referer(...);
+                ...
+              }
+          - pattern: |
+              public function $FUNC(...) {
+                ...
+                check_ajax_referer(...);
+                ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                wp_verify_nonce(...);
+                ...
+              }
+          - pattern: |
+              public function $FUNC(...) {
+                ...
+                wp_verify_nonce(...);
+                ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                if ( wp_verify_nonce(...) ) { ... }
+                ...
+              }
+          - pattern: |
+              public function $FUNC(...) {
+                ...
+                if ( wp_verify_nonce(...) ) { ... }
+                ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                if ( ! wp_verify_nonce(...) ) { ... }
+                ...
+              }
+          - pattern: |
+              public function $FUNC(...) {
+                ...
+                if ( ! wp_verify_nonce(...) ) { ... }
+                ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                ...
+                check_admin_referer(...);
+                ...
+              }
+          - pattern: |
+              public function $FUNC(...) {
+                ...
+                check_admin_referer(...);
+                ...
+              }
+      # ... but never checks the caller's capability in the same function.
+      # (statement form)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            current_user_can(...);
+            ...
+          }
+      # (positive if-guard)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( current_user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            if ( current_user_can(...) ) { ... }
+            ...
+          }
+      # (negated if-guard)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( ! current_user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            if ( ! current_user_can(...) ) { ... }
+            ...
+          }
+      # (user_can() variants)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            user_can(...);
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            user_can(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            if ( user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if ( ! user_can(...) ) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+            ...
+            if ( ! user_can(...) ) { ... }
+            ...
+          }
+    message: |
+      Detected an admin-ajax handler ($FUNC) that verifies a nonce but does
+      not verify a capability (current_user_can()/user_can()) in the function
+      body. The nonce only prevents cross-site request forgery; it does not
+      authorize the caller. Because admin-ajax.php callbacks have no
+      permission_callback, any logged-in user who can obtain the nonce (e.g.
+      via localized script data on pages accessible to low-privileged roles)
+      can invoke this handler and perform the action regardless of role.
+      Add an explicit capability check matching the action's sensitivity,
+      e.g. current_user_can('manage_options') or a plugin-specific meta cap,
+      before processing the request (CWE-862).
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/javascript/ajax/
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://developer.wordpress.org/reference/functions/check_ajax_referer/
+        - https://developer.wordpress.org/reference/functions/current_user_can/

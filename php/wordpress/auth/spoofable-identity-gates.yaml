@@ -1,0 +1,94 @@
+rules:
+  # ============================================================================
+  # USER-AGENT USED FOR ACCESS-CONTROL DECISIONS
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags conditions that base an access-control decision on the
+  # $_SERVER['HTTP_USER_AGENT'] value (e.g. "let search-engine crawlers see
+  # the site" gates). The User-Agent header is trivially spoofable by any
+  # caller (curl -A), so any protection gated on it is bypassable
+  # (CWE-290). Such checks may only be used for analytics/optimization,
+  # never for authorization.
+
+  - id: codevigilant.php.wordpress.auth.user_agent_access_control.pattern
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern: |
+          if (<... $_SERVER['HTTP_USER_AGENT'] ...>) { ... }
+      - pattern-not-inside: |
+          if ( wp_verify_nonce(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_admin_referer(...) ) { ... }
+      - pattern-not-inside: |
+          if ( check_ajax_referer(...) ) { ... }
+    message: |
+      An access-control decision is based on the client-controlled
+      $_SERVER['HTTP_USER_AGENT'] value. The User-Agent header can be set to
+      any string by any caller, so a protection gated on it (crawler
+      detection, bot filtering, feature toggles) is trivially bypassable
+      (CWE-290). Only use User-Agent for non-security purposes, and
+      authenticate real users with cookies/sessions/capabilities instead.
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/data-validation/
+        - https://owasp.org/www-community/attacks/User_Agent-based_attacks
+      source: CodeVigilant
+      license: MIT
+
+  # ============================================================================
+  # COOKIE COMPARED AGAINST A PLAIN-HASH OF A STORED SECRET
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags cookie checks of the form $_COOKIE[...] == md5($secret) /
+  # sha1($secret) / hash(...). The cookie then acts as a password-equivalent
+  # bearer token derived from a weak, unsalted, non-keyed hash of the secret:
+  # it never expires until the secret changes, can be replayed indefinitely,
+  # is guessable offline for low-entropy secrets, and is compared with a
+  # non-constant-time operator. Use a signed, expiring token (HMAC +
+  # timestamp, hash_equals) or a proper session instead (CWE-916 / CWE-287).
+
+  - id: codevigilant.php.wordpress.auth.cookie_plain_hash_secret_compare.pattern
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $_COOKIE[$KEY] == md5($SECRET)
+          - pattern: |
+              $_COOKIE[$KEY] === md5($SECRET)
+          - pattern: |
+              $_COOKIE[$KEY] == sha1($SECRET)
+          - pattern: |
+              $_COOKIE[$KEY] === sha1($SECRET)
+          - pattern: |
+              $_COOKIE[$KEY] == hash($ALGO, $SECRET)
+          - pattern: |
+              $_COOKIE[$KEY] === hash($ALGO, $SECRET)
+    message: |
+      A request cookie is compared against a plain (unsalted, non-keyed)
+      hash of a stored secret. The cookie is a replayable, non-expiring
+      password-equivalent derived from a weak hash (CWE-916): it can be
+      brute-forced offline for low-entropy secrets and is compared
+      non-constant-time. Replace with a signed token (HMAC over secret +
+      expiry, verified with hash_equals) or a server-side session.
+    metadata:
+      category: security
+      cwe: "CWE-916: Use of Password Hash With Insufficient Computational Effort"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/data-validation/
+        - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/04-Testing_for_Bypassing_Authentication_Schema
+      source: CodeVigilant
+      license: MIT

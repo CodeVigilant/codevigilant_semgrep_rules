@@ -1,0 +1,97 @@
+rules:
+  # ============================================================================
+  # NONCE-VERIFIED HANDLER WITHOUT CAPABILITY CHECK (NON-WRITE SIDE EFFECTS)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags functions/methods that verify a request nonce (check_admin_referer /
+  # check_ajax_referer / wp_verify_nonce) but never call current_user_can().
+  # The companion rule `nonce_verified_missing_capability` covers handlers that
+  # write persistent state (options/meta/db). This rule covers the rest of the
+  # side-effect surface (redirects, file operations, loops, external calls):
+  # any handler that trusts a nonce as its only gate.
+  #
+  # A nonce proves the request was initiated from a page the current user
+  # loaded; it does NOT authorize the action. Nonces are minted on pages that
+  # are visible to a wider audience than the intended privileged actor (e.g.
+  # the media-library bulk-action nonce is issued to every user with
+  # upload_files, while the action it gates is often meant for admins), and
+  # they leak into logs, referrers, and browser history. Admin-action and
+  # admin-post handlers that skip current_user_can() are the classic WordPress
+  # "missing authorization" (CWE-862) vulnerability class: every request the
+  # handler serves must be re-checked against the capability that the action
+  # semantically requires.
+  #
+  # CWE-862: Missing Authorization
+
+  - id: codevigilant.php.wordpress.auth.nonce_only_handler_missing_capability
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: check_admin_referer(...)
+          - pattern: check_ajax_referer(...)
+          - pattern: wp_verify_nonce(...)
+      # Exclude handlers that perform any capability check in the same body.
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              current_user_can(...);
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              current_user_can(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              if (current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (!current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          public function $FUNC(...) {
+              ...
+              if (!current_user_can(...)) { ... }
+              ...
+          }
+      # A bare nonce check on the admin side also implies the user reached the
+      # admin area, but that is a login gate, not an authorization gate.
+    message: |
+      A nonce is verified (check_admin_referer/check_ajax_referer/
+      wp_verify_nonce) but the handler never calls current_user_can(). The
+      nonce only proves the request came from a page the user loaded - it is
+      not an authorization control. Any logged-in user able to obtain a valid
+      nonce for their own session (e.g. the media bulk-action nonce issued to
+      every upload_files user) can reach this handler, which performs side
+      effects (redirects, file operations, loops, external calls) meant for a
+      privileged role. Add an explicit current_user_can() check with the
+      capability the action semantically requires before executing any side
+      effect.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control
+      source: CodeVigilant
+      license: MIT

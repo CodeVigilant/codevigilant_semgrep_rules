@@ -1,0 +1,44 @@
+rules:
+  # ============================================================================
+  # register_meta() WITH AN ALWAYS-TRUE AUTH CALLBACK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags register_meta() calls that pass '__return_true' as the
+  # 'auth_callback' argument. The auth_callback gates the per-key
+  # edit_{object_type}_meta capability consulted by map_meta_cap(); an
+  # always-true callback removes the meta-level authorization layer, so any
+  # user who can edit the object at all (and any caller reaching the REST
+  # meta endpoints) can write the registered meta key regardless of its
+  # sensitivity. Combined with 'show_in_rest' => true, this exposes the key
+  # as a writable field in the REST API for every object of the registered
+  # type. Use a real capability check (e.g. current_user_can('edit_post',
+  # $post_id)) as the callback instead (CWE-862).
+
+  - id: codevigilant.php.wordpress.auth.meta.register_meta_auth_callback_return_true
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: |
+          register_meta($OBJECT_TYPE, $KEY, $ARGS);
+      - pattern: "'__return_true'"
+    message: |
+      register_meta() is called with 'auth_callback' set to '__return_true'.
+      This disables the per-key meta capability check, so the registered meta
+      key can be written by any user who can edit the object (and, with
+      'show_in_rest' => true, through the REST API) without any
+      key-specific authorization. Provide a callback that performs a real
+      capability check (e.g. current_user_can('edit_post', $post_id))
+      instead of always returning true.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/register_meta/
+        - https://developer.wordpress.org/reference/functions/map_meta_cap/
+      source: CodeVigilant
+      license: MIT

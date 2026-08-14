@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.ajax.nopriv_endpoint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,14 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Unauthenticated AJAX endpoint (wp_ajax_nopriv_)
+// ---------------------------------------------------------------------------
+
+function vuln_nopriv_ajax() {
+    // EXPECTED: auth.ajax.nopriv_endpoint
+    add_action( 'wp_ajax_nopriv_import_site', 'My_Controller::import' );
+    add_action( "wp_ajax_nopriv_delete_backup", array( 'My_Controller', 'delete' ) );
 }

@@ -1,0 +1,82 @@
+rules:
+  # ============================================================================
+  # REST PERMISSION CALLBACK AUTHENTICATING VIA STORAGE-PRESENCE LOOKUP
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags REST permission callbacks (verify_* / permission_* / check_* /
+  # authorize_* methods) whose entire authorization decision is a lookup of a
+  # request-supplied identifier in local storage (transient, option, cache or
+  # repository "get_by_*" call) returning "found => authorized". The caller is
+  # never authenticated: whoever knows or guesses an identifier that happens to
+  # exist in storage is granted access (CWE-287 / CWE-306). This is the
+  # method-callback variant of rest.permission_callback_param_auth (which only
+  # matches inline closures that call $request->get_param()).
+  #
+  # Existence of a record is not proof the caller owns it. Verify the caller
+  # cryptographically (signature/HMAC via hash_equals), or bind the identifier
+  # to the authenticated session, before authorizing.
+
+  - id: codevigilant.php.wordpress.auth.rest.permission_callback_storage_lookup
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  return $OBJ->$METHOD($ARG) !== null;
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  return $OBJ->$METHOD($ARG) != null;
+              }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (?i)(verify|permission|authorize|check).*
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              wp_verify_nonce(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              hash_equals(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              current_user_can(...);
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              is_user_logged_in(...);
+              ...
+          }
+    message: |
+      REST permission callback authorizes a request when a storage lookup for a
+      request-supplied identifier succeeds (e.g. a "get_by_*" repository call,
+      get_transient/get_option) and performs no caller authentication (no
+      signature/HMAC check via hash_equals, no nonce, no capability/session
+      check). Anyone who knows or can guess an identifier present in storage is
+      treated as authorized. Verify the caller cryptographically or bind the
+      identifier to the authenticated session before granting access.
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/routes-and-endpoints/#permission-callback
+        - https://developer.wordpress.org/reference/functions/get_transient/
+        - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/09-Testing_for_Weak_Password_Policy
+      source: CodeVigilant
+      license: MIT

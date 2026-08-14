@@ -1,0 +1,44 @@
+rules:
+  # ============================================================================
+  # OTP / TOTP / BACKUP-CODE VERIFICATION WITH SUPERGLOBAL INPUT
+  # One-time-password verification functions (verifyCode, verify_code, verifyOtp,
+  # checkCode, validateOtp, ...) that receive the submitted code directly from a
+  # PHP superglobal. Without a nonce and without attempt rate-limiting/lockout,
+  # the verification code space (e.g. 10^6 for a 6-digit TOTP) can be brute-forced
+  # by an attacker who reached the second authentication step.
+  # ============================================================================
+  - id: codevigilant.php.wordpress.auth.superglobal.otp_verify.taint
+    message: "Superglobal input flows into a one-time-password (OTP/TOTP/backup-code) verification call. If the second authentication factor is verified without nonce checks and attempt rate-limiting, the code space can be brute-forced (CWE-307). Validate the code origin and add per-session/IP attempt limits with lockout."
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_POST[...]
+          - pattern: $_GET[...]
+          - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $OBJ->verifyCode($SECRET, $CODE, ...)
+              - pattern: $OBJ->verify_code($SECRET, $CODE, ...)
+              - pattern: $OBJ->verifyOtp($SECRET, $CODE, ...)
+              - pattern: $OBJ->verifyOTP($SECRET, $CODE, ...)
+              - pattern: $OBJ->verify_otp($SECRET, $CODE, ...)
+              - pattern: $OBJ->checkCode($SECRET, $CODE, ...)
+              - pattern: $OBJ->check_code($SECRET, $CODE, ...)
+              - pattern: $OBJ->validateOtp($SECRET, $CODE, ...)
+              - pattern: $OBJ->validate_otp($SECRET, $CODE, ...)
+              - pattern: $OBJ->validateCode($SECRET, $CODE, ...)
+              - pattern: $OBJ->validate_code($SECRET, $CODE, ...)
+    metadata:
+      category: security
+      cwe: "CWE-307: Improper Restriction of Excessive Authentication Attempts"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+        - https://pages.nist.gov/800-63-3/sp800-63b.html
+      source: bug-hunting code review (generic code shape)
+      license: MIT

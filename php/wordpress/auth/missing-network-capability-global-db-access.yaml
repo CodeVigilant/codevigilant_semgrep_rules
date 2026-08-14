@@ -1,0 +1,142 @@
+rules:
+  # ============================================================================
+  # WHOLE-DATABASE ENUMERATION WITHOUT A NETWORK-SCOPE AUTHORIZATION CHECK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags code that enumerates the whole database (SHOW TABLES) while the
+  # enclosing class never performs a network-level authorization check
+  # (is_super_admin() or a manage_network_* capability). On WordPress
+  # multisite - or on shared databases hosting several installations - such a
+  # query exposes every table of every site, including the shared
+  # users/usermeta tables and other sites' option/post tables, to any user
+  # holding only the site-level capability. Combined with table-name-driven
+  # queries this bypasses the trust boundary between sites and can escalate a
+  # main-site administrator to a network super administrator (CWE-862/CWE-269).
+  # Gate whole-database access with is_super_admin() / a manage_network_*
+  # capability check, or restrict enumeration to the current site's prefix.
+
+  - id: codevigilant.php.wordpress.auth.database.show_tables_missing_network_capability
+    severity: HIGH
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          class $C { ... }
+      - pattern-either:
+          - pattern: $wpdb->get_col( 'SHOW TABLES' )
+          - pattern: $wpdb->get_col( "SHOW TABLES" )
+          - pattern: $wpdb->get_results( 'SHOW TABLES', ... )
+          - pattern: $wpdb->get_results( "SHOW TABLES", ... )
+      - pattern-not-inside:
+          pattern-either:
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    is_super_admin( ... );
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    if ( ! is_super_admin() ) { ... }
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    if ( ! is_super_admin( ... ) ) { ... }
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    current_user_can( 'manage_network_options' );
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    if ( ! current_user_can( 'manage_network_options' ) ) { ... }
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    current_user_can( 'manage_network' );
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    if ( ! current_user_can( 'manage_network' ) ) { ... }
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    current_user_can( 'manage_network_plugins' );
+                    ...
+                  }
+                  ...
+                }
+            - pattern: |
+                class $C {
+                  ...
+                  function $F( ... ) {
+                    ...
+                    if ( ! current_user_can( 'manage_network_plugins' ) ) { ... }
+                    ...
+                  }
+                  ...
+                }
+    message: |
+      Detected a whole-database enumeration query (SHOW TABLES) whose
+      enclosing class never verifies a network-level capability
+      (is_super_admin() or a manage_network_* capability). On multisite or
+      shared databases this exposes every table of every site - including the
+      shared users/usermeta tables and other sites' data - to a user holding
+      only the site-level capability (CWE-862 missing authorization). Gate
+      whole-database access with is_super_admin() / a manage_network_*
+      capability, or restrict enumeration to the current site's table prefix.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/get_col/
+        - https://developer.wordpress.org/reference/functions/is_super_admin/
+        - https://developer.wordpress.org/plugins/multisite/
+      source: CodeVigilant
+      license: MIT

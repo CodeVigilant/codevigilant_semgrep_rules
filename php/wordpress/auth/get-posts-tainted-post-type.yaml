@@ -1,0 +1,46 @@
+rules:
+  # ============================================================================
+  # USER-CONTROLLED POST TYPE IN get_posts()/WP_Query (BROKEN ACCESS CONTROL)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Taint rule: a request superglobal ( $_POST / $_GET / $_REQUEST ) flows into
+  # the post_type argument of get_posts() or WP_Query without an allowlist.
+  #
+  # get_posts()/WP_Query do not filter post types by visibility: passing an
+  # arbitrary, non-public post type (a private custom post type, an attachment
+  # type, etc.) lets a low-privileged caller enumerate the titles and IDs of
+  # records the UI never intended to expose (CWE-639 / CWE-200). Post type
+  # values must be restricted to an explicit allowlist (e.g. in_array($pt,
+  # ['post','page'])) before being used in a query.
+
+  - id: codevigilant.php.wordpress.auth.get_posts_tainted_post_type
+    mode: taint
+    severity: HIGH
+    languages: [php]
+    pattern-sources:
+      - pattern: $_POST
+      - pattern: $_GET
+      - pattern: $_REQUEST
+    pattern-sinks:
+      - pattern: get_posts($ARGS)
+      - pattern: get_posts( $ARGS )
+      - pattern: new WP_Query($ARGS)
+      - pattern: new WP_Query( $ARGS )
+    message: |
+      Request input ( $_POST / $_GET / $_REQUEST ) flows into the arguments of
+      get_posts() or new WP_Query(). If the tainted value is used as the
+      'post_type' (or 'post_status'/'s') query argument without an explicit
+      allowlist, a low-privileged caller can enumerate records of non-public
+      post types or otherwise query content beyond what the endpoint should
+      expose. Restrict post_type/post_status to an explicit allowlist and map
+      unknown values to a safe default (CWE-639).
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/get_posts/
+        - https://developer.wordpress.org/reference/classes/wp_query/

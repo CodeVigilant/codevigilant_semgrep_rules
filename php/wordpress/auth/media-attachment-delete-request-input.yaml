@@ -1,0 +1,123 @@
+rules:
+  # ============================================================================
+  # MEDIA ATTACHMENT DELETION DRIVEN BY REQUEST INPUT (NO OWNERSHIP CHECK)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags wp_delete_attachment() (and the closely related get_attached_file()
+  # read primitive) when the attachment ID is taken from a request
+  # superglobal ($_GET/$_POST/$_REQUEST/$_COOKIE) or from a variable that is
+  # assigned directly from one, without any ownership or capability check.
+  #
+  # wp_delete_attachment( $id, true ) permanently removes the attachment
+  # record AND its file from disk. WordPress attachments are site-global
+  # objects; a handler that deletes an attachment referenced purely by a
+  # client-supplied ID performs an IDOR-style delete of any media item
+  # (CWE-639) whenever the surrounding handler is reachable by a user that
+  # does not own the attachment. The ID must be validated against the
+  # current user (get_current_user_id() / post ownership / upload_files
+  # capability) before deletion.
+  #
+  # CWE-639: Authorization Bypass Through User-Controlled Key
+
+  - id: codevigilant.php.wordpress.auth.media.attachment_delete_request_input
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # direct superglobal ID
+          - pattern: |
+              wp_delete_attachment( $_GET[$KEY], ... );
+          - pattern: |
+              wp_delete_attachment( $_POST[$KEY], ... );
+          - pattern: |
+              wp_delete_attachment( $_REQUEST[$KEY], ... );
+          - pattern: |
+              wp_delete_attachment( $_COOKIE[$KEY], ... );
+          # ID copied from a superglobal, then deleted later in the same function
+          - pattern: |
+              $ID = $_GET[$KEY];
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_POST[$KEY];
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_REQUEST[$KEY];
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_COOKIE[$KEY];
+              ...
+              wp_delete_attachment( $ID, ... );
+          # get_attached_file() on a request-controlled ID (cross-user
+          # attachment reference) feeding a later deletion
+          - pattern: |
+              get_attached_file( $_GET[$KEY] );
+          - pattern: |
+              get_attached_file( $_POST[$KEY] );
+          - pattern: |
+              get_attached_file( $_REQUEST[$KEY] );
+          - pattern: |
+              get_attached_file( $_COOKIE[$KEY] );
+          # same-function read-then-delete flow on one ID
+          - pattern: |
+              $FILE = get_attached_file( $ID );
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_POST[$KEY];
+              ...
+              $FILE = get_attached_file( $ID );
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_GET[$KEY];
+              ...
+              $FILE = get_attached_file( $ID );
+              ...
+              wp_delete_attachment( $ID, ... );
+          - pattern: |
+              $ID = $_REQUEST[$KEY];
+              ...
+              $FILE = get_attached_file( $ID );
+              ...
+              wp_delete_attachment( $ID, ... );
+      # Exclude IDs that pass through an integer/ownership sanitizer
+      - pattern-not: |
+          wp_delete_attachment( absint(...), ... );
+      - pattern-not: |
+          wp_delete_attachment( intval(...), ... );
+      - pattern-not: |
+          $ID = absint(...);
+          ...
+          wp_delete_attachment( $ID, ... );
+      - pattern-not: |
+          $ID = intval(...);
+          ...
+          wp_delete_attachment( $ID, ... );
+    message: |
+      wp_delete_attachment() / get_attached_file() is called with an
+      attachment ID taken from request input (or from a variable assigned
+      directly from it). Attachments are site-global and their IDs are
+      sequential; deleting or referencing an attachment purely by a
+      client-supplied ID without verifying ownership or the
+      delete_post/upload_files capability lets any reachable user delete or
+      access arbitrary media items (CWE-639 / CWE-862). Resolve the
+      attachment, verify it belongs to the current user (or check
+      current_user_can('delete_post', $id)), and cast/validate the ID before
+      passing it to wp_delete_attachment().
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_delete_attachment/
+        - https://developer.wordpress.org/reference/functions/get_attached_file/
+        - https://developer.wordpress.org/plugins/security/authorization/
+      source: CodeVigilant
+      license: MIT

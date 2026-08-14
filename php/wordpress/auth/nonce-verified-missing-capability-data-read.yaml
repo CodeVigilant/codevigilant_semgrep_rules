@@ -1,0 +1,214 @@
+rules:
+  # ============================================================================
+  # NONCE-VERIFIED HANDLER WITH DATA READ BUT NO CAPABILITY CHECK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags functions that verify a nonce (wp_verify_nonce / check_ajax_referer /
+  # check_admin_referer) and then read/return data through direct database
+  # access ($wpdb->get_results / get_row / get_var / get_col / query) WITHOUT
+  # any capability check (current_user_can()) in the same function.
+  #
+  # A nonce proves the request originated from a page the current user loaded;
+  # it is NOT an authorization control. AJAX handlers that are reachable from
+  # any logged-in session (wp_ajax_*) must still verify the user's capability
+  # before returning data. Handlers that only check the nonce let any
+  # low-privileged user (e.g. a Contributor) enumerate records, list private
+  # data or probe the database, turning the endpoint into an information
+  # disclosure primitive.
+  #
+  # Note: the rule only inspects the function body in which the read occurs;
+  # reads performed by a helper called from the handler are not followed.
+  # Wrapper capability helpers (e.g. my_plugin_current_user_can()) are not
+  # recognized and may produce false positives; verify before acting on a hit.
+  #
+  # CWE-862: Missing Authorization
+
+  - id: codevigilant.php.wordpress.auth.nonce_verified_missing_capability_data_read
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # --- wp_verify_nonce variants ---
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+                  $wpdb->get_results(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+                  $wpdb->get_row(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+                  $wpdb->get_var(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+                  $wpdb->get_col(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  wp_verify_nonce(...);
+                  ...
+                  $wpdb->query(...);
+                  ...
+              }
+          # --- check_ajax_referer variants ---
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+                  $wpdb->get_results(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+                  $wpdb->get_row(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+                  $wpdb->get_var(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+                  $wpdb->get_col(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_ajax_referer(...);
+                  ...
+                  $wpdb->query(...);
+                  ...
+              }
+          # --- check_admin_referer variants ---
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_admin_referer(...);
+                  ...
+                  $wpdb->get_results(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_admin_referer(...);
+                  ...
+                  $wpdb->get_row(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_admin_referer(...);
+                  ...
+                  $wpdb->get_var(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_admin_referer(...);
+                  ...
+                  $wpdb->get_col(...);
+                  ...
+              }
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+                  check_admin_referer(...);
+                  ...
+                  $wpdb->query(...);
+                  ...
+              }
+      # Exclude functions that perform a capability check anywhere in the body.
+      # The statement-sequence ellipsis (...) does not reach calls nested inside
+      # expressions (e.g. if (!current_user_can(...)) { ... }), so the common
+      # gate shapes are enumerated explicitly.
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (!current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (false === current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              if (true !== current_user_can(...)) { ... }
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              $CAP = current_user_can(...) ? $A : $B;
+              ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+              ...
+              current_user_can(...);
+              ...
+          }
+    message: |
+      Nonce-verified handler reads data through direct database access
+      ($wpdb->get_* / $wpdb->query) without a current_user_can() capability
+      check in the same function. A nonce authenticates the request origin but
+      does not authorize the action; any user able to obtain a valid nonce for
+      their own session can enumerate records through this endpoint. Add an
+      explicit capability check before the data read.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control
+      source: CodeVigilant
+      license: MIT

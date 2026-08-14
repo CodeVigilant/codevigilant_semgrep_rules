@@ -1,0 +1,43 @@
+rules:
+  # ============================================================================
+  # UNAUTHENTICATED AJAX ENDPOINTS (wp_ajax_nopriv_)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags registration of AJAX actions that run for logged-OUT visitors.
+  # A nopriv handler is reachable by anyone on the internet; if it performs a
+  # state change (file/DB writes, imports, deletions, uploads) or reads
+  # sensitive data it MUST authenticate the request itself - a nonce
+  # (check_ajax_referer() / wp_verify_nonce()) and/or a capability check
+  # (current_user_can()). Handlers that only compare a shared/static secret,
+  # or that omit authentication entirely, expose the action to unauthenticated
+  # attackers (CWE-306). Registration alone is a surface marker: the handler
+  # body must be reviewed, but every nopriv registration should be justified.
+
+  - id: codevigilant.php.wordpress.auth.ajax.nopriv_endpoint
+    patterns:
+      - pattern: add_action($HOOK, $CALLBACK)
+      - metavariable-regex:
+          metavariable: $HOOK
+          regex: "^['\"]wp_ajax_nopriv_"
+    message: |
+      Registered an unauthenticated AJAX action (wp_ajax_nopriv_*). The
+      handler runs for logged-out visitors, so it MUST authenticate every
+      request itself: verify a nonce (check_ajax_referer() / wp_verify_nonce())
+      and/or enforce a capability (current_user_can()) before performing any
+      state change or reading sensitive data. A nopriv endpoint whose handler
+      only compares a shared/static secret, or performs no authentication at
+      all, allows unauthenticated access to the action (CWE-306).
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/hooks/wp_ajax_nopriv_action/
+        - https://developer.wordpress.org/plugins/javascript/enqueuing/
+        - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+    languages: [php]
+    mode: search
+    severity: HIGH
