@@ -1,0 +1,37 @@
+rules:
+  - id: codevigilant.java.jenkins.authn.user-record-from-changelog
+    patterns:
+      - pattern-inside: |
+          class $C extends $BASE {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $BASE
+          regex: (?i).*changelogset.*
+      - pattern: User.get($NAME)
+      - pattern-not: User.get("...")
+    message: |
+      Detected a Jenkins User record created or retrieved with a
+      non-literal value inside a ChangeLogSet implementation. Changelog
+      fields (author names, emails) originate from the SCM repository and
+      are attacker-influenced (anyone able to commit). Creating or
+      mutating User records and their properties (e.g. the mailer address)
+      from this data lets repository contributors pollute the user
+      database and plant email addresses on other users' records, which
+      can be abused for phishing or email-based account-recovery flows.
+      Validate identifiers, avoid creating users from changelog data, and
+      never write properties derived from changelog data back to User
+      records.
+    metadata:
+      category: security
+      cwe: "CWE-471: Modification of Assumed-Immutable Data (MAID)"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
