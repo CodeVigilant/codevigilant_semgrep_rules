@@ -1,0 +1,51 @@
+rules:
+  # ============================================================================
+  # URL-BEARING ATTRIBUTE READ WITHOUT SCHEME VALIDATION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags reads of URL-bearing element attributes (src, poster, srcset,
+  # background, formaction) whose values are then used without being
+  # validated against a scheme allowlist. Values such as
+  # javascript:, vbscript:, file: or data:text/html on these attributes
+  # bypass sanitizers that only check href-style attributes, and can enable
+  # script execution or unexpected resource loads depending on how the
+  # value is consumed (CWE-20 / CWE-79).
+
+  - id: codevigilant.php.wordpress.validation.url_attribute_without_scheme_validation
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern: $ELEMENT->getAttribute($NAME)
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i)^['"]?(src|poster|srcset|background|formaction)['"]?$
+      - pattern-not-inside: |
+          if ($COND) {
+            $ELEMENT->removeAttribute($NAME);
+          }
+      - pattern-not-inside: |
+          if ($COND) {
+            ...
+            $ELEMENT->removeAttribute($NAME);
+            ...
+          }
+    message: |
+      A URL-bearing attribute ($NAME) is read from an element and its value
+      is not visibly validated against a scheme allowlist (http/https/
+      relative/data:image) nor removed when unsafe. Schemes such as
+      javascript:, vbscript:, file: or data:text/html on URL-bearing
+      attributes can bypass sanitizers that only check href-style
+      attributes (CWE-20/CWE-79). Apply an explicit scheme allowlist check
+      and remove the attribute when the value is not allowed.
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/xss/
+      source: CodeVigilant
+      license: MIT

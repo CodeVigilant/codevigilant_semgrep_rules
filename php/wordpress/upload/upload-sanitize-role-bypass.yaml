@@ -1,0 +1,57 @@
+rules:
+  # ============================================================================
+  # UPLOAD SANITIZATION CONDITIONALLY SKIPPED BASED ON CURRENT USER ROLE
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags upload-sanitization handlers that compute a "no sanitize needed"
+  # flag by intersecting a configured bypass-role list with the current
+  # user's roles, and then call the sanitizer only when that flag is empty.
+  # Files uploaded by users in a bypass role are stored without sanitization;
+  # if such files are later rendered to other visitors (e.g. SVGs inlined
+  # into pages, as is common in media plugins), attacker-controlled content
+  # reaches the browser unsanitized and can execute (stored XSS, CWE-79) or
+  # reference remote resources (CWE-918). The bypass list must be restricted
+  # to fully trusted roles, and sanitization should remain the default for
+  # every upload path.
+
+  - id: codevigilant.php.wordpress.upload.sanitize.role_bypass_intersect
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: |
+          function $FUNC($PARAM) {
+            ...
+            $X = array_intersect($ROLES_A, $ROLES_B);
+            ...
+            $FUNC_SANITIZE(...);
+            ...
+          }
+      - pattern-either:
+          - pattern: $X = array_intersect($ROLES_A, $ROLES_B);
+          - pattern: |
+              if (empty($X)) {
+                ...
+                $FUNC_SANITIZE(...);
+                ...
+              }
+    message: |
+      Upload sanitization is gated on a role-based bypass check: the
+      sanitizer runs only when array_intersect() between a configured role
+      list and the current user's roles is empty. Users holding a bypass
+      role upload files that are stored without sanitization and later
+      served/rendered to other visitors, which can lead to stored XSS or
+      remote-resource injection. Restrict the bypass list to fully trusted
+      roles and sanitize every upload regardless of the uploader's role.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/reference/hooks/wp_handle_upload_prefilter/
+        - https://developer.wordpress.org/reference/functions/wp_get_current_user/
+      source: CodeVigilant
+      license: MIT

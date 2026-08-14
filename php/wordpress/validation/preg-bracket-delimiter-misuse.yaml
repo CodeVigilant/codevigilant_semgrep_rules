@@ -1,0 +1,67 @@
+rules:
+  # ============================================================================
+  # PREG_* CALL WITH BRACKET-DELIMITED PATTERN (MISUSED CHARACTER CLASS)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags preg_* calls whose pattern argument is a string literal starting
+  # with an opening bracket ("[", "(", "{", "<"). PHP's PCRE engine treats
+  # the first character of a pattern string as the delimiter and, for bracket
+  # characters, expects the MATCHING CLOSING bracket - so a string that was
+  # meant to be a negated character class such as "[^\d-]" is actually parsed
+  # as the pattern "^\d-" wrapped in [...] delimiters. The intended
+  # sanitization silently never happens: attacker payloads (e.g. markup or
+  # metacharacters) pass through untouched while an unrelated leading
+  # "digit-dash" sequence is stripped.
+  #
+  # When such a call is used to sanitize request input before a sink (SQL
+  # query, shell, HTML output, redirect), the broken filter is a defense
+  # that fails open and becomes an injection vector the moment the adjacent
+  # validation is changed or the value is reused elsewhere.
+  #
+  # CWE-20: Improper Input Validation / CWE-185: Incorrect Regular
+  # Expression
+
+  - id: codevigilant.php.wordpress.validation.preg_bracket_delimiter_misuse
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: preg_replace($PATTERN, $REPL, $SUBJECT)
+          - pattern: preg_replace_callback($PATTERN, $CALLBACK, $SUBJECT)
+          - pattern: preg_filter($PATTERN, $REPL, $SUBJECT)
+          - pattern: preg_match($PATTERN, $SUBJECT)
+          - pattern: preg_match_all($PATTERN, $SUBJECT)
+          - pattern: preg_split($PATTERN, $SUBJECT)
+          - pattern: preg_grep($PATTERN, $ARRAY)
+      # only string-literal patterns; array-of-patterns forms are out of scope
+      - metavariable-pattern:
+          metavariable: $PATTERN
+          pattern: |
+            "..."
+      # pattern literal starts with a bracket delimiter (source text may
+      # begin with a quote character, so make the quote optional)
+      - metavariable-regex:
+          metavariable: $PATTERN
+          regex: ^['"]?[\[\(\{<]
+    message: |
+      A preg_* call passes a string literal that starts with a bracket
+      character ("[", "(", "{", "<"). PHP parses that bracket as the regex
+      DELIMITER and scans for the matching closing bracket, so a value
+      written as a negated character class (e.g. "[^\\d-]") is not treated
+      as a character class at all - the intended filtering silently does not
+      run. If this call sanitizes request input, the protection fails open.
+      Use explicit delimiters with proper escaping, e.g. preg_replace(
+      '/[^\\d-]/', '', $input ), and verify the filter with a test payload.
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/regexp.reference.delimiters.php
+        - https://www.php.net/manual/en/function.preg-replace.php
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.php.wordpress.validation.svg_sanitizer_missing_remote_ref_removal
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: function $FUNC(...) { ... }
+      - pattern-either:
+          - pattern: new \enshrined\svgSanitize\Sanitizer(...)
+          - pattern: new Sanitizer(...)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            removeRemoteReferences(...);
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            $OBJ->removeRemoteReferences(...);
+            ...
+          }
+    message: |
+      A Sanitizer from enshrined/svg-sanitize is created without calling
+      removeRemoteReferences(true). Sanitized SVGs will keep external
+      resource references (@import/url() in styles, external <image>
+      hrefs, external paint servers) which browsers fetch when the SVG is
+      rendered inline. Call $sanitizer->removeRemoteReferences(true)
+      before sanitizing to strip remote references.
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from an Untrusted Control Sphere"
+      owasp: "A03:2021 - Injection"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://github.com/darylldoyle/svg-sanitizer
+      source: CodeVigilant
+      license: MIT

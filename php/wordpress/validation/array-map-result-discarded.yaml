@@ -1,0 +1,48 @@
+rules:
+  # ============================================================================
+  # SANITIZATION APPLIED VIA array_map() WITH THE RESULT DISCARDED
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags sanitization/escaping callbacks passed to array_map() as a bare
+  # statement whose return value is never assigned or returned. array_map() is
+  # a pure function: it never modifies its input array in place, so discarding
+  # the result means the "sanitization" never happens - nested array values
+  # (e.g. whole form payloads / option arrays) reach the sink unsanitized
+  # (CWE-20 Improper Input Validation). Assign the result back to the
+  # variable (e.g. `$data[ $key ] = array_map( 'sanitize_text_field', ... )`)
+  # or sanitize each element explicitly.
+
+  - id: codevigilant.php.wordpress.validation.sanitize.array_map_result_discarded
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: array_map($SANITIZER, $ARR);
+          - pattern: array_map($SANITIZER, $ARR, $ARR2);
+      - metavariable-regex:
+          metavariable: $SANITIZER
+          regex: '^[\x27"](sanitize_|esc_|wp_kses|stripslashes|intval|absint|floatval|htmlspecialchars|htmlentities|trim|filter_)[a-z_]*[\x27"]$'
+      - pattern-not-inside: $X = array_map(...);
+      - pattern-not-inside: |
+          $X = array_map(...);
+      - pattern-not-inside: |
+          return array_map(...);
+    message: |
+      Sanitization function passed to array_map() with the result discarded:
+      array_map() is pure and never mutates its input in place, so the mapped
+      values are not actually sanitized. Nested user input therefore reaches
+      the sink unsanitized. Assign the result (e.g.
+      `$data[$key] = array_map(...)`) or sanitize each value explicitly.
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.array-map.php
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: CodeVigilant
+      license: MIT

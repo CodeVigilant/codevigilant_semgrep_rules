@@ -1,0 +1,51 @@
+rules:
+  # ============================================================================
+  # SVG SANITIZER CONFIGURED WITH removeRemoteReferences() AS THE ONLY
+  # REMOTE-REFERENCE DEFENSE
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags enshrined/svg-sanitize configurations that enable
+  # removeRemoteReferences(true) and rely on it to strip remote references
+  # from uploaded SVG files. That API only removes attribute values that are
+  # exactly a quoted url(...) wrapper containing an http/https/ftp/file
+  # scheme. It does NOT inspect CSS text inside <style> elements, does NOT
+  # match unquoted url(...) values or url() nested inside larger style
+  # strings, and does NOT validate src attributes (e.g. <image src="...">).
+  # When such SVGs are later rendered inline in a browser (the common SVG
+  # plugin feature), each visitor's browser will fetch the attacker-chosen
+  # URLs: data exfiltration (IP, Referer), browser-side request forgery
+  # against localhost/LAN services, and CSS-based UI redressing. Ensure the
+  # attribute whitelist excludes url-carrying attributes (style, src,
+  # fill/stroke paint servers, marker-*, filter, clip-path) and that CSS
+  # url()/@import inside style content is stripped (CWE-918 / CWE-79).
+
+  - id: codevigilant.php.wordpress.svg.sanitizer.removeRemoteReferences_incomplete
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern: $SANITIZER->removeRemoteReferences(true);
+    message: |
+      The SVG sanitizer is configured with removeRemoteReferences(true) as
+      the only remote-reference defense. This only strips attribute values
+      that exactly match a quoted url(...) wrapper with an http/https/ftp/
+      file scheme. CSS url()/@import inside <style> elements or style
+      attributes (including unquoted url()) and src attributes on elements
+      such as <image> are not removed, so a crafted SVG can make every
+      visitor's browser fetch attacker-controlled URLs when the SVG is
+      rendered inline (data exfiltration, browser-side request forgery
+      against localhost/LAN services, UI redressing). Combine this with an
+      attribute whitelist that excludes style/src and paint-server
+      attributes, and strip CSS url()/@import from style content.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://github.com/darylldoyle/svg-sanitizer
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload_prefilter/
+      source: CodeVigilant
+      license: MIT
