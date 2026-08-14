@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.crypto.rsa-key-hardcoded-source
+    mode: taint
+    pattern-sources:
+      - pattern: Base64.getDecoder().decode($S)
+      - pattern: Base64.getMimeDecoder().decode($S)
+    pattern-sinks:
+      - pattern: new X509EncodedKeySpec($KEY)
+    pattern-sanitizers:
+      - pattern: KeyStore.getInstance(...)
+      - pattern: new FileInputStream(...)
+    message: |
+      Detected RSA/X.509 public key material being constructed from a
+      value that comes from an embedded source (a Base64 string constant
+      compiled into the class, or a hardcoded byte array) rather than a
+      per-deployment secret store. A key that ships inside the binary is
+      shared across every installation and is recoverable by anyone who
+      can extract it (or who possesses the corresponding product build),
+      so ciphertexts produced with it do not provide real
+      confidentiality. Use a per-deployment key pair, a secure key
+      store, or the Jenkins credentials plugin instead of embedding key
+      material in code.
+    metadata:
+      category: security
+      cwe: "CWE-321: Use of Hard-coded Cryptographic Key"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/321.html
+        - https://www.jenkins.io/doc/developer/security/secrets/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
