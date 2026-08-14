@@ -1,0 +1,32 @@
+rules:
+  - id: codevigilant.java.jenkins.command-injection.cmd-as-single-string.concatenation
+    message: |
+      Detected a command line assembled from non-literal values and passed to
+      Launcher.ProcStarter.cmdAsSingleString. Jenkins tokenizes this string
+      (honoring quotes) and executes it as a process, so any
+      attacker-influenced component (SCM/workspace content, build parameters,
+      environment variables, remote responses) concatenated into it can alter
+      which program is executed or inject additional arguments, and quoting
+      inside the string can be broken out of. Build the command with an
+      ArgumentListBuilder and pass each argument as a separate token, or
+      strictly validate and whitelist every non-literal component before it
+      is included in the command line.
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://javadoc.jenkins.io/hudson/Launcher.ProcStarter.html#cmdAsSingleString(java.lang.String)
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
+    patterns:
+      - pattern: $STARTER.cmdAsSingleString($ARG)
+      - metavariable-pattern:
+          metavariable: $ARG
+          patterns:
+            - pattern-not: '"..."'
