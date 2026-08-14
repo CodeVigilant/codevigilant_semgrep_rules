@@ -1,0 +1,58 @@
+rules:
+  # ============================================================================
+  # INSECURE DESERIALIZATION — STORAGE-SOURCED DATA
+  # Generic pattern: unserialize() of values read from WordPress storage
+  # (post meta, options, transients, DB rows, files, variables) with a single
+  # argument and no allowed_classes restriction. The direct-superglobal case is
+  # covered by `deserialize.yaml`; this rule covers the stored-data case, which
+  # becomes exploitable as PHP Object Injection whenever the stored value is
+  # attacker-influenced (e.g. writable meta/options from a lower-privileged
+  # user or another plugin).
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.insecure_deserialization.storage.unserialize
+    patterns:
+      - pattern-either:
+        - pattern: unserialize($X)
+        - pattern: "@unserialize($X)"
+      - pattern-not: unserialize($_GET[$KEY])
+      - pattern-not: unserialize($_POST[$KEY])
+      - pattern-not: unserialize($_REQUEST[$KEY])
+      - pattern-not: unserialize($_COOKIE[$KEY])
+      - pattern-not: unserialize($_FILES[$KEY])
+      - pattern-not: unserialize($_SERVER[$KEY])
+      - pattern-not: "@unserialize($_GET[$KEY])"
+      - pattern-not: "@unserialize($_POST[$KEY])"
+      - pattern-not: "@unserialize($_REQUEST[$KEY])"
+      - pattern-not: "@unserialize($_COOKIE[$KEY])"
+      - pattern-not: "@unserialize($_FILES[$KEY])"
+      - pattern-not: "@unserialize($_SERVER[$KEY])"
+      - pattern-not: unserialize($X, $OPTS)
+      - pattern-not: "@unserialize($X, $OPTS)"
+      - pattern-not: unserialize("...")
+      - pattern-not: unserialize('...')
+      - pattern-not: "@unserialize(\"...\")"
+      - pattern-not: "@unserialize('...')"
+    message: |
+      Detected insecure deserialization of storage-backed data in WordPress.
+      A value read from storage (post meta, options, transients, database rows
+      or any variable) is passed to unserialize() without an allowed_classes
+      restriction. If the stored value can be influenced by an attacker, this
+      can lead to PHP Object Injection and potentially remote code execution.
+      Use unserialize($data, ['allowed_classes' => false]) or json_decode()
+      instead, and validate the result shape before use.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+        - https://www.php.net/manual/en/function.unserialize.php
+      source: CodeVigilant Original
+      license: MIT
+    languages: [php]
+    mode: search
+    severity: HIGH
