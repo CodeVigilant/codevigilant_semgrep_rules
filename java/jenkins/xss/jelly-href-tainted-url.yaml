@@ -1,0 +1,30 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.jelly-href-tainted
+    message: >-
+      Jelly anchor href is bound to an expression (${...}) instead of a constant
+      URL. If the value derives from server/network/config data, an attacker can
+      inject a javascript: or data: scheme and achieve stored XSS in the Jenkins
+      UI when the link is rendered. Validate the URL scheme against an allow-list.
+    severity: HIGH
+    languages: [xml]
+    paths:
+      include:
+        - "*.jelly"
+        - "*.xml"
+    patterns:
+      - pattern: <a href="$URL">...</a>
+      - metavariable-regex:
+          metavariable: $URL
+          regex: '^(?!\$\{rootURL\}|https?://).*\$\{.*'
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - jelly
+      confidence: MEDIUM
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+      source: ai-anant
+      license: MIT

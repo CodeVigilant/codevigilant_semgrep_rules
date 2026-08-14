@@ -1,0 +1,4 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
+  <a href="${rootURL}/${it.author.url}/">author</a>
+  <a href="https://example.com/${it.id}">static</a>
+</j:jelly>
