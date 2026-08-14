@@ -1,0 +1,41 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.dohandler.save-without-permission
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: ^do[A-Z]
+      - pattern-either:
+          - pattern: save();
+          - pattern: $CONF.save();
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $X.checkPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Stapler 'do*' handler that persists configuration (calls
+      save()) without an explicit ACL permission check. In Jenkins, 'do*'
+      methods on RootAction / ModelObject / GlobalConfiguration are routed
+      directly by Stapler and are not protected by any permission by default;
+      @RequirePOST only enforces POST + CSRF crumb. Any user who can reach the
+      URL can invoke the handler and modify global configuration. Guard the
+      handler with an explicit permission check such as
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER).
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
