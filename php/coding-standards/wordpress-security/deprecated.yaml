@@ -77,7 +77,6 @@ rules:
     patterns:
       - pattern-either:
           - pattern: get_currentuserinfo()
-          - pattern: get_user_by_email(...)
           - pattern: get_userdatabylogin(...)
           - pattern: get_user_by_email(...)
           - pattern: wp_get_single_post(...)
@@ -87,6 +86,10 @@ rules:
           - pattern: the_category_head(...)
           - pattern: previous_post(...)
           - pattern: next_post(...)
+          # WP 7.0.0 deprecated functions (WPCS 3.4.0 update)
+          - pattern: addslashes_gpc(...)
+          - pattern: block_core_navigation_block_contains_core_navigation(...)
+          - pattern: wp_sanitize_script_attributes(...)
     metadata:
       category: security
       cwe: "CWE-477"

@@ -1,0 +1,36 @@
+rules:
+  - id: codevigilant.php.coding-standards.security.naive_path_prefix_check
+    message: >
+      Detected a path-containment check that uses a naive string-prefix
+      comparison. Unless the allowed base path includes a trailing directory
+      separator, a sibling directory whose name merely starts with the base
+      (e.g. base "wp-content" also matches "wp-content-evil/file.php") passes
+      the check, allowing writes or reads outside the intended directory.
+      Compare against the base with a trailing slash (e.g.
+      trailingslashit($base)) or resolve with realpath() and verify the
+      separator boundary.
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: substr($PATH, 0, $LEN) === $PREFIX
+          - pattern: strpos($PATH, $PREFIX) === 0
+          - pattern: strncmp($PATH, $PREFIX, $LEN) === 0
+    pattern-not-either:
+      - pattern: substr($PATH, 0, $LEN) === $PREFIX . "/"
+      - pattern: substr($PATH, 0, $LEN) === $PREFIX . '/'
+      - pattern: strpos($PATH, $PREFIX . "/") === 0
+      - pattern: strpos($PATH, $PREFIX . '/') === 0
+      - pattern: strncmp($PATH, $PREFIX . "/", $LEN) === 0
+      - pattern: strncmp($PATH, $PREFIX . '/', $LEN) === 0
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/697.html
+        - https://owasp.org/www-community/attacks/Path_Traversal
+      source: bug-hunting-round-analysis
+      license: MIT

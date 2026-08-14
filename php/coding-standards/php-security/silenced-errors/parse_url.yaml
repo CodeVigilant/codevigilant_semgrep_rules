@@ -1,0 +1,48 @@
+rules:
+  # ============================================================================
+  # ERROR SUPPRESSION WITH parse_url()
+  # Source: WordPress-Coding-Standards/WordPress/Sniffs/PHP/NoSilencedErrorsSniff.php
+  # License: MIT - Copyright (c) 2009 John Godley and contributors
+  #
+  # WPCS 3.4.0 removed parse_url() from the list of functions where error
+  # silencing (@) is permitted. Previously, an E_WARNING was thrown when
+  # URL parsing failed in PHP < 5.3.3, but modern PHP handles this gracefully
+  # and the @ operator hides legitimate errors during development/debugging.
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.error-handling.silenced_parse_url
+    message: "Do not use @ error suppression with parse_url(). Remove the @ operator and validate the return value with proper error checking instead."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: "@parse_url(...)"
+    metadata:
+      category: best-practice
+      cwe: "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      owasp: "A04:2021 - Insecure Design"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_parse_url/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/NoSilencedErrorsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.error-handling.silenced_unserialize
+    message: "Do not use @ error suppression with unserialize(). Remove the @ operator and validate the return value. Consider using json_decode() for untrusted data."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: "@unserialize(...)"
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: php
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.unserialize.php
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/PHP/NoSilencedErrorsSniff.php
+      source: WordPress-Coding-Standards
+      license: MIT
+      notes: "Defense-in-depth: WPCS still allows @unserialize() but suppressing errors on deserialization hides return-value failures that are critical for security."

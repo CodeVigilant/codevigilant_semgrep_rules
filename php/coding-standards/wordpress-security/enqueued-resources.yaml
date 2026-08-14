@@ -2,6 +2,7 @@ rules:
   # ============================================================================
   # ENQUEUED RESOURCES RULES
   # Source: WordPress-Coding-Standards/WordPress/Sniffs/WP/EnqueuedResourcesSniff.php
+  #         WordPress-Coding-Standards/WordPress/Sniffs/WP/EnqueuedResourceParametersSniff.php
   # License: MIT - Copyright (c) 2009 John Godley and contributors
   # ============================================================================
 
@@ -11,9 +12,9 @@ rules:
     languages: [php]
     patterns:
       - pattern-either:
-          - pattern: echo "<script";
-          - pattern: echo '<script';
-          - pattern: print "<script";
+          - pattern-regex: echo\s*"<script
+          - pattern-regex: echo\s*'<script
+          - pattern-regex: print\s*"<script
     metadata:
       category: security
       cwe: "CWE-79"
@@ -32,9 +33,9 @@ rules:
     languages: [php]
     patterns:
       - pattern-either:
-          - pattern: echo "<link";
-          - pattern: echo '<link';
-          - pattern: print "<link";
+          - pattern-regex: echo\s*"<link
+          - pattern-regex: echo\s*'<link
+          - pattern-regex: print\s*"<link
     metadata:
       category: security
       cwe: "CWE-79"
@@ -43,5 +44,35 @@ rules:
       confidence: MEDIUM
       references:
         - https://developer.wordpress.org/reference/functions/wp_enqueue_style/
+      source: WordPress-Coding-Standards
+      license: MIT
+
+  - id: codevigilant.php.coding-standards.xss.user_controlled_version_param
+    message: "User-controlled input detected in wp_enqueue_script() or wp_enqueue_style() arguments. This could allow injection attacks if unsanitized input reaches the handle, src, or version parameters. Use hardcoded values or plugin version constants."
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              wp_enqueue_script(..., $_GET[...], ...)
+          - pattern: |
+              wp_enqueue_script(..., $_POST[...], ...)
+          - pattern: |
+              wp_enqueue_script(..., $_REQUEST[...], ...)
+          - pattern: |
+              wp_enqueue_style(..., $_GET[...], ...)
+          - pattern: |
+              wp_enqueue_style(..., $_POST[...], ...)
+          - pattern: |
+              wp_enqueue_style(..., $_REQUEST[...], ...)
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_enqueue_script/
+        - https://github.com/WordPress/WordPress-Coding-Standards/blob/develop/WordPress/Sniffs/WP/EnqueuedResourceParametersSniff.php
       source: WordPress-Coding-Standards
       license: MIT
