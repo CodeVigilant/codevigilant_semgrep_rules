@@ -1,0 +1,32 @@
+rules:
+  - id: codevigilant.java.jenkins.ldap.referral-follow
+    message: >-
+      The JNDI LDAP referral policy is set to "follow"
+      (Context.REFERRAL / "java.naming.referral"). When a referral is
+      encountered, the LDAP client automatically re-issues the operation -
+      including the bind credentials - against the referred server, which may
+      be attacker-influenced (e.g. a referral injected by a compromised or
+      spoofed directory server). This forwards credentials to third-party
+      hosts. Keep the default "ignore" policy, or validate referred hosts
+      explicitly before following.
+    severity: HIGH
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: '$PROPS.put(Context.REFERRAL, "follow")'
+          - pattern: '$PROPS.put("java.naming.referral", "follow")'
+          - pattern: '$PROPS.put(Context.REFERRAL, $COND ? $A : "follow")'
+          - pattern: '$PROPS.put(Context.REFERRAL, $COND ? "follow" : $B)'
+    metadata:
+      category: security
+      cwe: "CWE-522: Insufficiently Protected Credentials"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology:
+        - jenkins
+        - java
+        - ldap
+      confidence: HIGH
+      references:
+        - https://docs.oracle.com/javase/jndi/tutorial/ldap/referral/
+      source: ai-anant
+      license: MIT
