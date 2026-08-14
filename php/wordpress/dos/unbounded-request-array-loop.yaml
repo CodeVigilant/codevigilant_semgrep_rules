@@ -1,0 +1,107 @@
+rules:
+  # ============================================================================
+  # UNBOUNDED LOOP OVER REQUEST-DERIVED ARRAY WITH PER-ITEM DATABASE WORK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags `foreach` loops that iterate over an array extracted from the HTTP
+  # request body/params (decoded JSON body, get_json_params(), a superglobal)
+  # and perform database/query work (get_post_meta, WP_Query, $wpdb->*, object
+  # construction with the loop variable, ...) inside the loop body, with no
+  # cap on the number of items. An attacker controls the array size, so each
+  # request can force an unbounded number of DB queries / allocations
+  # (CWE-400), enabling resource-exhaustion denial of service on any endpoint
+  # that trusts a request-supplied id list.
+  #
+  # NOTE: loops that cap the array (e.g. array_slice) are usually safe; this
+  # rule may still flag them as a low-severity warning since the cap and the
+  # request-derived nature are worth a manual look.
+
+  - id: codevigilant.php.wordpress.dos.unbounded_request_array_loop
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      # The array is extracted from a decoded JSON request body, from a REST
+      # request helper, or from a superglobal, and then iterated with foreach.
+      - pattern-either:
+          - pattern: |
+              $BODY = json_decode($request->get_body());
+              ...
+              $ARR = $BODY->$FIELD ?? $DEFAULT;
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+          - pattern: |
+              $BODY = json_decode($request->get_body());
+              ...
+              $ARR = $BODY->$FIELD;
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+          - pattern: |
+              $ARR = $request->get_json_params();
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+          - pattern: |
+              $ARR = $_POST;
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+          - pattern: |
+              $ARR = $_GET;
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+          - pattern: |
+              $ARR = $_REQUEST;
+              ...
+              foreach ($ARR as $ITEM) {
+                ...
+              }
+      # Per-item database/query work inside the loop
+      - pattern-either:
+          - pattern: get_post_meta(...)
+          - pattern: update_post_meta(...)
+          - pattern: delete_post_meta(...)
+          - pattern: get_option(...)
+          - pattern: update_option(...)
+          - pattern: get_post(...)
+          - pattern: get_term(...)
+          - pattern: update_post(...)
+          - pattern: wp_update_post(...)
+          - pattern: wp_insert_post(...)
+          - pattern: new WP_Query(...)
+          - pattern: new $CLASS($ITEM)
+          - pattern: $wpdb->query(...)
+          - pattern: $wpdb->get_results(...)
+          - pattern: $wpdb->get_row(...)
+          - pattern: $wpdb->get_var(...)
+          - pattern: $wpdb->insert(...)
+          - pattern: $wpdb->update(...)
+          - pattern: $wpdb->delete(...)
+    message: |
+      A foreach loop iterates over an array taken from the HTTP request body or
+      params ('$ARR') and performs per-item database/query work inside the loop
+      without any cap on the number of items. Because the caller controls the
+      array size, this allows resource-exhaustion attacks (CWE-400). Bound the
+      array (e.g. array_slice to a fixed maximum) and validate/limit the item
+      count before looping.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/get_post_meta/
+        - https://developer.wordpress.org/reference/classes/wp_query/
+        - https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_HTTP_Parameter_Pollution
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,63 @@
+rules:
+  # ============================================================================
+  # explode() ON POSSIBLY-ARRAY VALUE (TYPE CONFUSION -> UNCAUGHT TypeError)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags explode() calls whose second argument may be an array rather than the
+  # required string. Values returned by json_decode($x, true) are arrays (or
+  # nested arrays); values read from $_POST/$_GET/$_REQUEST/$_FILES are strings
+  # only when sent as scalar fields but become arrays when the same parameter
+  # name is repeated (?a[]=1&a[]=2) or when the source is a decoded JSON body.
+  # On PHP 8, passing an array to explode() raises an uncaught TypeError
+  # ("Argument #2 ($string) must be of type string, array given"), which turns
+  # a crafted import/request into an unhandled 500 / fatal error (CWE-248).
+  # Guard with is_string() (or (string) / strval() / implode()) before use.
+
+  - id: codevigilant.php.wordpress.dos.explode.type_confusion
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: json_decode(...)
+              - pattern: $_POST[...]
+              - pattern: $_GET[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_FILES[...]
+              - pattern: $_COOKIE[...]
+    pattern-sinks:
+      - patterns:
+          - pattern: explode($SEP, $ARG)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: is_string(...)
+              - pattern: (string) $X
+              - pattern: strval(...)
+              - pattern: implode(...)
+              - pattern: wp_unslash(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+    message: |
+      Detected a possibly-array value (json_decode() output or a superglobal)
+      passed to explode() without a string type check. explode() requires a
+      string second argument; on PHP 8 an array argument raises an uncaught
+      TypeError (CWE-248), so a crafted JSON import or repeated query
+      parameter (?a[]=1&a[]=2) can crash the request with a 500 error.
+      Guard the value with is_string() (or coerce with (string)/strval()/
+      implode()) before passing it to explode().
+    metadata:
+      category: security
+      cwe: "CWE-248: Uncaught Exception"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.explode.php
+        - https://www.php.net/manual/en/function.json-decode.php
+        - https://www.php.net/manual/en/language.types.type-juggling.php
+        - https://www.php.net/manual/en/migration80.incompatible.php
+      source: CodeVigilant
+      license: MIT

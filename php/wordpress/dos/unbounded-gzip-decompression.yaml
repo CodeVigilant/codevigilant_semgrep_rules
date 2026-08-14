@@ -1,0 +1,76 @@
+rules:
+  # ============================================================================
+  # UNBOUNDED GZIP/DEFLATE DECOMPRESSION OF FILE CONTENTS
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags code that reads a file (typically an uploaded file) and feeds the
+  # raw contents to gzdecode()/gzinflate()/gzuncompress() without any size
+  # constraint on the decompressed result. A small gzip file can expand
+  # ~1000x (gzip bomb), so an attacker-controlled upload can force the
+  # process to allocate hundreds of MB to GBs, exhausting PHP memory and
+  # taking the site down (CWE-400: Uncontrolled Resource Consumption).
+
+  - id: codevigilant.php.wordpress.dos.unbounded_gzip_decompression
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: |
+          function $FUNC(...) {
+            ...
+            $DATA = file_get_contents(...);
+            ...
+          }
+      - pattern-either:
+          - pattern: gzdecode($DATA)
+          - pattern: gzinflate($DATA)
+          - pattern: gzuncompress($DATA)
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (strlen($DATA) > $LIMIT) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (strlen($DATA) >= $LIMIT) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (mb_strlen($DATA) > $LIMIT) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            if (mb_strlen($DATA) >= $LIMIT) {
+              ...
+            }
+            ...
+          }
+    message: |
+      File contents are decompressed with gzdecode()/gzinflate()/gzuncompress()
+      without bounding the decompressed size. A small gzip bomb can expand
+      ~1000x and exhaust PHP memory (CWE-400). Reject files whose
+      decompressed size exceeds a sane limit (e.g. check strlen() of the
+      decoded data) before processing.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://en.wikipedia.org/wiki/Zip_bomb
+      source: CodeVigilant
+      license: MIT

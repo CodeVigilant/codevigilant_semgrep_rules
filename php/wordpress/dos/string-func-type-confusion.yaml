@@ -1,0 +1,63 @@
+rules:
+  # ============================================================================
+  # STRING-ONLY FUNCTIONS ON POSSIBLY-ARRAY VALUES (TYPE CONFUSION -> 500)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags calls to string-only PHP functions (stripslashes, strlen, substr,
+  # strtolower, strtoupper) whose argument may be an array. Arrays reach these
+  # calls when a URL-encoded body is decoded with parse_str() (repeated keys
+  # or name[]= syntax produce arrays), or directly from superglobals sent with
+  # repeated parameter names (?a[]=1&a[]=2). On PHP 8 passing an array raises
+  # an uncaught TypeError ("Argument #1 ($string) must be of type string,
+  # array given"), turning a crafted request into an unhandled 500 / fatal
+  # error (CWE-248). Guard with is_string() before use.
+
+  - id: codevigilant.php.wordpress.dos.string_func.type_confusion
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_POST[...]
+              - pattern: $_GET[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_FILES[...]
+              - pattern: $_COOKIE[...]
+    pattern-propagators:
+      - pattern: parse_str($SRC, $DST)
+        from: $SRC
+        to: $DST
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: stripslashes($ARG)
+              - pattern: strlen($ARG)
+              - pattern: substr($ARG, ...)
+              - pattern: strtolower($ARG)
+              - pattern: strtoupper($ARG)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: is_string(...)
+              - pattern: implode(...)
+    message: |
+      Detected a possibly-array value (parse_str()-decoded body or a
+      superglobal) passed to a string-only function without a string type
+      check. Repeated keys or name[]= syntax make these values arrays; on
+      PHP 8 an array argument raises an uncaught TypeError (CWE-248), so a
+      crafted request can crash the request with a 500 error. Guard the value
+      with is_string() before passing it to the string function.
+    metadata:
+      category: security
+      cwe: "CWE-248: Uncaught Exception"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.parse-str.php
+        - https://www.php.net/manual/en/function.stripslashes.php
+        - https://www.php.net/manual/en/migration80.incompatible.php
+      source: CodeVigilant
+      license: MIT

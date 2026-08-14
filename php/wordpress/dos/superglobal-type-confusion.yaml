@@ -1,0 +1,67 @@
+rules:
+  # ============================================================================
+  # SUPERGLOBAL PASSED AS STRING ARGUMENT WITHOUT TYPE VALIDATION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags request superglobals ($_GET/$_POST/$_REQUEST/$_COOKIE/$_SERVER)
+  # passed directly as the string argument of a string-hashing / character
+  # conversion / encoding function without an is_string()/is_array() guard or
+  # an explicit (string) cast. With array-valued parameters (e.g. ?key[]=1) or
+  # out-of-domain string values (e.g. an invalid encoding name), PHP 8.0+
+  # raises an uncaught TypeError/ValueError (strict scalar type declarations)
+  # that aborts the whole request with HTTP 500 — a trivial unauthenticated
+  # request-triggered denial of service. Validate the type (is_string() +
+  # sanitization) or cast before passing request input to string functions.
+
+  - id: codevigilant.php.wordpress.dos.superglobal.type_confusion
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: $FUNC( ..., $_GET[$KEY], ... )
+          - pattern: $FUNC( ..., $_POST[$KEY], ... )
+          - pattern: $FUNC( ..., $_REQUEST[$KEY], ... )
+          - pattern: $FUNC( ..., $_COOKIE[$KEY], ... )
+          - pattern: $FUNC( ..., $_SERVER[$KEY], ... )
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: (md5|sha1|mb_convert_kana|mb_convert_encoding|mb_strlen|mb_substr|mb_strcut|mb_strtolower|mb_strtoupper|strlen|strtolower|strtoupper|trim|ltrim|rtrim|ucfirst|ucwords|nl2br|wordwrap|htmlspecialchars|htmlentities|addslashes|stripslashes|rawurlencode|urlencode|base64_encode|base64_decode)
+      - pattern-not:
+          pattern-either:
+            - pattern: $FUNC( ..., (string) $_GET[$KEY], ... )
+            - pattern: $FUNC( ..., (string) $_POST[$KEY], ... )
+            - pattern: $FUNC( ..., (string) $_REQUEST[$KEY], ... )
+            - pattern: $FUNC( ..., (string) $_COOKIE[$KEY], ... )
+            - pattern: $FUNC( ..., (string) $_SERVER[$KEY], ... )
+            - pattern: $FUNC( ..., strval( $_GET[$KEY] ), ... )
+            - pattern: $FUNC( ..., strval( $_POST[$KEY] ), ... )
+            - pattern: $FUNC( ..., strval( $_REQUEST[$KEY] ), ... )
+            - pattern: $FUNC( ..., strval( $_COOKIE[$KEY] ), ... )
+            - pattern: $FUNC( ..., strval( $_SERVER[$KEY] ), ... )
+            - pattern: $FUNC( ..., intval( $_GET[$KEY] ), ... )
+            - pattern: $FUNC( ..., intval( $_POST[$KEY] ), ... )
+            - pattern: $FUNC( ..., intval( $_REQUEST[$KEY] ), ... )
+            - pattern: $FUNC( ..., intval( $_COOKIE[$KEY] ), ... )
+            - pattern: $FUNC( ..., intval( $_SERVER[$KEY] ), ... )
+    message: |
+      A request superglobal is used directly as the string argument of a
+      string-hashing / conversion / encoding function without a type check or
+      cast. On PHP 8+ an array-valued parameter (e.g. ?key[]=1) or an
+      out-of-domain value (e.g. an invalid encoding name) raises an uncaught
+      TypeError/ValueError and aborts the request with HTTP 500. Validate the
+      value first (is_string()/is_array() plus a sanitizer such as
+      sanitize_text_field()) or cast explicitly before use.
+    metadata:
+      category: security
+      cwe: "CWE-248: Uncaught Exception"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/language.types.declarations.php
+        - https://www.php.net/manual/en/mbstring.encoding.php
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: CodeVigilant
+      license: MIT
