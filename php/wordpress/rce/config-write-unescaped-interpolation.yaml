@@ -1,0 +1,41 @@
+rules:
+  # ============================================================================
+  # PHP CONFIG FILE WRITE WITH UNESCAPED SINGLE-QUOTED INTERPOLATION (CWE-94)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags assignments of the shape  "$name = 'prefix $value suffix';"  whose
+  # resulting line is written into a PHP configuration file (directly or via a
+  # config-line-replacement helper). The value is interpolated inside single
+  # quotes without any escaping, so a value containing a single quote breaks
+  # out of the string literal and injects arbitrary PHP statements into the
+  # config file. Because such config files are normally included on every
+  # request, this is a code-injection / remote-code-execution vector
+  # (CWE-94). Lines where the value is neutralized by an escaping or
+  # sanitizing function (var_export, addslashes, esc_html, sanitize_*,
+  # preg_replace, numeric casts, json_encode, ...) are excluded.
+
+  - id: codevigilant.php.wordpress.rce.config_write.unescaped_single_quote_interpolation
+    patterns:
+      - pattern-regex: '(\$|\\\$)[A-Za-z_][A-Za-z0-9_]*\s*=\s*''[^'']*\$[A-Za-z_][A-Za-z0-9_]*[^'']*'';'
+      - pattern-not-regex: '(addslashes|var_export|esc_html|esc_attr|esc_js|sanitize_text_field|sanitize_key|sanitize_title|preg_replace|\(int\)|intval|absint|wp_json_encode|json_encode|base64_encode)\s*\('
+    message: |
+      Detected a value interpolated into a single-quoted PHP assignment that is
+      typically written to a PHP configuration file. If the interpolated value
+      is not escaped and can contain a single quote, the quote breaks out of
+      the string and injects arbitrary PHP code into the configuration file
+      (code injection, CWE-94). The config file is usually included on every
+      request, so this can lead to remote code execution. Escape the value
+      (var_export / addslashes) or reject quotes before writing.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://owasp.org/www-community/attacks/Code_Injection
+    languages: [php]
+    mode: search
+    severity: HIGH

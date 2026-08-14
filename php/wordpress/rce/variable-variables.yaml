@@ -1,0 +1,43 @@
+rules:
+  # ============================================================================
+  # VARIABLE VARIABLES ASSIGNED FROM DYNAMIC KEYS (CWE-95)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags variable-variable assignment statements ($$name = $value; and
+  # ${$expr} = $value;) where the variable name is computed at runtime.
+  # When the key/name originates from request input, imported files, or
+  # stored data, an attacker controls which local variable is overwritten:
+  # this can clobber control-flow variables (fatal "Cannot re-assign $this",
+  # type errors), inject values into later logic, or emulate dynamic
+  # evaluation. Use explicit whitelisted keys or an associative array
+  # instead of variable variables.
+
+  - id: codevigilant.php.wordpress.rce.var.variable_variables.dynamic_assignment
+    message: >-
+      Variable variables ($$name = $value; / ${$expr} = $value;) are
+      assigned using a runtime-computed name. If the name is derived from
+      request input, an imported file, or stored data, an attacker controls
+      which local variable is overwritten (including $this and loop state),
+      causing fatal errors, logic corruption, or dynamic evaluation
+      (CWE-95 Improper Neutralization of Directives in Dynamically
+      Evaluated Code). Replace variable variables with an explicit
+      whitelist or an associative array.
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: $$KEY = $VALUE;
+          - pattern: ${$KEY} = $VALUE;
+    metadata:
+      category: security
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-project-top-ten/2017/A1_2017-Injection
+        - https://www.php.net/manual/en/language.variables.variable.php
+      source: Generic (CodeVigilant)
+      license: MIT

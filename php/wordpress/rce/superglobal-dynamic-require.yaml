@@ -1,0 +1,90 @@
+rules:
+  # ============================================================================
+  # REQUEST-DERIVED INPUT REACHES A DYNAMIC require/include (RCE)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # A dynamic require/include (require $X / include $X where $X is a variable)
+  # executes the referenced file as PHP. When request-derived input (a
+  # superglobal) reaches that sink - directly or through decoding helpers such
+  # as base64_decode/urldecode, or after being written to disk and then
+  # included - an attacker who controls the input can execute arbitrary PHP
+  # code on the server (CWE-98 / CWE-94). Whitelist the includable file set and
+  # never let request input influence the included path or the written content.
+
+  - id: codevigilant.php.wordpress.rce.superglobal_dynamic_require
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[$KEY]
+              - pattern: $_POST[$KEY]
+              - pattern: $_REQUEST[$KEY]
+              - pattern: $_COOKIE[$KEY]
+              - pattern: $_FILES[$KEY]
+              - pattern: $_SERVER[$KEY]
+    pattern-propagators:
+      - pattern: base64_decode($X)
+        from: $X
+        to: base64_decode($X)
+      - pattern: strtr($X, $ARGS)
+        from: $X
+        to: strtr($X, $ARGS)
+      - pattern: urldecode($X)
+        from: $X
+        to: urldecode($X)
+      - pattern: rawurldecode($X)
+        from: $X
+        to: rawurldecode($X)
+      - pattern: explode($SEP, $X)
+        from: $X
+        to: explode($SEP, $X)
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+      - pattern: str_replace($A, $B, $X)
+        from: $X
+        to: str_replace($A, $B, $X)
+      - pattern: $PATH . $X
+        from: $X
+        to: $PATH . $X
+      - pattern: $X . $PATH
+        from: $X
+        to: $X . $PATH
+      - pattern: sprintf($FMT, $X)
+        from: $X
+        to: sprintf($FMT, $X)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: require $X;
+              - pattern: require_once $X;
+              - pattern: include $X;
+              - pattern: include_once $X;
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: basename($X)
+              - pattern: sanitize_file_name($X)
+              - pattern: realpath($X)
+              - pattern: in_array($X, $WHITELIST)
+    message: |
+      Request-derived input (superglobal) flows into a dynamic require/include
+      statement. Because the included file is executed as PHP, an attacker who
+      can influence the path - or the content of a file written to that path
+      before inclusion - achieves arbitrary PHP code execution on the server.
+      Never build include paths from request input; use a strict whitelist of
+      constant filenames and validate every path segment.
+    metadata:
+      category: security
+      cwe: "CWE-98: Improper Control of Filename for Include/Require Statement in PHP Program ('PHP Remote File Inclusion')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/PHP_Code_Injection
+        - https://www.php.net/manual/en/function.require.php
+      source: CodeVigilant
+      license: MIT

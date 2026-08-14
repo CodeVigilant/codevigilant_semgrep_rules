@@ -1,0 +1,42 @@
+rules:
+  - id: codevigilant.php.wordpress.rce.user_input_class_instantiation
+    message: >
+      Detected user-controlled input being used to construct a class name that is
+      passed to class_exists() or used with the new operator. Class names built
+      from request parameters can be abused to trigger autoloaders that include
+      arbitrary files (LFI/RCE), or to instantiate unintended classes before any
+      authorization check. Validate the route/name against an allowlist of known
+      class names before use.
+    severity: CRITICAL
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[$KEY]
+              - pattern: $_POST[$KEY]
+              - pattern: $_REQUEST[$KEY]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: class_exists($CLASS)
+              - pattern: new $CLASS
+              - pattern: is_subclass_of($CLASS, ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: basename(...)
+              - pattern: preg_replace(...)
+              - pattern: sanitize_file_name(...)
+              - pattern: sanitize_key(...)
+    metadata:
+      category: security
+      cwe: "CWE-98: Improper Control of Filename for Include/Require Statement in PHP Program ('PHP Remote File Inclusion')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+        - https://www.php.net/manual/en/language.oop5.autoload.php
+      source: bug-hunting-round-analysis
+      license: MIT
