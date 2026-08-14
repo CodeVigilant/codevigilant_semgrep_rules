@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.java.jenkins.file-operation.file.tainted-path
+    patterns:
+      - pattern-either:
+          - pattern: new FileBody(new File($PATH))
+          - pattern: new FileInputStream($PATH)
+          - pattern: new FileReader($PATH)
+          - pattern: new FileOutputStream($PATH)
+      - pattern-not: new FileBody(new File("..."))
+      - pattern-not: new FileInputStream("...")
+      - pattern-not: new FileReader("...")
+      - pattern-not: new FileOutputStream("...")
+    message: |
+      Detected a file read/write sink (FileBody, FileInputStream,
+      FileReader or FileOutputStream) constructed from a non-literal path.
+      In Jenkins plugins such paths are commonly derived from job
+      configuration, environment variables or build parameters expanded at
+      runtime (for example EnvVars.expand). A user who can influence the
+      resolved value (e.g. a low-privileged user triggering a
+      parameterized build) can point the sink at arbitrary files on the
+      node where the code executes — reading them out (exfiltration via an
+      upload) or, for write sinks, overwriting them. When the path source
+      is not fully trusted, validate that the resolved absolute path stays
+      within the intended base (workspace/build directory) before opening
+      the file.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
