@@ -1,0 +1,30 @@
+rules:
+  - id: codevigilant.java.jenkins.tokenmacro.template.taint
+    patterns:
+      - pattern-either:
+          - pattern: TokenMacro.expandAll($RUN, $WS, $LISTENER, $TEMPLATE)
+          - pattern: TokenMacro.expandAll($BUILD, $LISTENER, $TEMPLATE)
+      - pattern-not: TokenMacro.expandAll($RUN, $WS, $LISTENER, "...")
+      - pattern-not: TokenMacro.expandAll($BUILD, $LISTENER, "...")
+    message: |
+      Detected TokenMacro.expandAll() invoked with a non-literal template string.
+      Jenkins token-macro expansion runs every registered token, including
+      file/workspace tokens (e.g. ${FILE,path=...}) that can read files outside
+      the intended base directory when given an absolute path, plus environment
+      and secret tokens. Only expand templates from fully trusted sources
+      (never user, SCM, or pipeline input); enforce permission checks and an
+      allow-list of macro names before expansion.
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output Used by a Downstream Component ('Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://plugins.jenkins.io/token-macro/
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
