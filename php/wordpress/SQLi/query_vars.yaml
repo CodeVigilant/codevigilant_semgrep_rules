@@ -1,0 +1,86 @@
+rules:
+  # ============================================================================
+  # WP_QUERY order/orderby QUERY VAR INTERPOLATED INTO A STRING (ORDER BY SQLi)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # WP_Query exposes 'order' and 'orderby' as public query vars, so the raw
+  # value of ?order=... / ?orderby=... from the URL lands untouched in
+  # $query->query_vars['order'] / $query->query_vars['orderby']. WordPress
+  # core sanitises its own local copy (WP_Query::parse_order) but never
+  # rewrites the query_vars entry. Plugins that build an ORDER BY fragment by
+  # concatenating $query->query_vars['order'] (e.g. inside a posts_orderby
+  # filter) and return it unvalidated end up splicing attacker input straight
+  # into the SQL ORDER BY clause, e.g. ?order=ASC,(SELECT SLEEP(5)).
+  #
+  # CWE-89: Improper Neutralization of Special Elements used in an SQL Command
+
+  - id: codevigilant.php.wordpress.sqli.query_vars.order_orderby_interpolation
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # query var concatenated into a string (ORDER BY fragment etc.)
+          - pattern-inside: |
+              $V = $X . $Q->query_vars['order'];
+          - pattern-inside: |
+              $V = $Q->query_vars['order'] . $X;
+          - pattern-inside: |
+              $V = $X . $Q->query_vars['order'] . $Y;
+          - pattern-inside: |
+              $V = $X . $Q->query_vars['orderby'];
+          - pattern-inside: |
+              $V = $Q->query_vars['orderby'] . $X;
+          - pattern-inside: |
+              $V = $X . $Q->query_vars['orderby'] . $Y;
+          # query var appended to an existing string
+          - pattern-inside: |
+              $V .= $Q->query_vars['order'];
+          - pattern-inside: |
+              $V .= $Q->query_vars['orderby'];
+          # ternary assignment (e.g. isset()-guarded) interpolating the query var
+          - pattern-inside: |
+              $V = $COND ? $Q->query_vars['order'] . $X : $Y;
+          - pattern-inside: |
+              $V = $COND ? $X . $Q->query_vars['order'] : $Y;
+          - pattern-inside: |
+              $V = $COND ? $Q->query_vars['orderby'] . $X : $Y;
+          - pattern-inside: |
+              $V = $COND ? $X . $Q->query_vars['orderby'] : $Y;
+      - pattern-either:
+          - pattern: $Q->query_vars['order']
+          - pattern: $Q->query_vars['orderby']
+      # --- sanitizer / validator exclusions ---
+      - pattern-not: sanitize_text_field($Q->query_vars['order'])
+      - pattern-not: sanitize_text_field($Q->query_vars['orderby'])
+      - pattern-not: sanitize_key($Q->query_vars['order'])
+      - pattern-not: sanitize_key($Q->query_vars['orderby'])
+      - pattern-not: in_array($Q->query_vars['order'], $ALLOWED)
+      - pattern-not: in_array($Q->query_vars['orderby'], $ALLOWED)
+      - pattern-not: strtoupper($Q->query_vars['order'])
+      - pattern-not: strtoupper($Q->query_vars['orderby'])
+      - pattern-not: intval($Q->query_vars['order'])
+      - pattern-not: intval($Q->query_vars['orderby'])
+      - pattern-not: absint($Q->query_vars['order'])
+      - pattern-not: absint($Q->query_vars['orderby'])
+    message: |
+      Detected SQL injection in a WordPress ORDER BY clause.
+      The public WP_Query variable 'order'/'orderby' (raw attacker input from
+      the URL) is interpolated into a string without validation. Core's
+      parse_order() only sanitises core's own copy; $query->query_vars['order']
+      keeps the raw value, so the assembled ORDER BY fragment can carry an
+      arbitrary SQL subquery (e.g. ?order=ASC,(SELECT SLEEP(5))). Whitelist the
+      value against ASC/DESC before concatenation, or build the clause from a
+      sanitized copy of the query variable.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wp_query/parse_order/
+        - https://developer.wordpress.org/reference/hooks/posts_orderby/
+      source: CodeVigilant
+      license: MIT
