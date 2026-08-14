@@ -1,0 +1,69 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.dohandler-file-serve-without-permission
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              public $RET $FUNC(...) {
+                ...
+              }
+          - pattern-inside: |
+              public $RET $FUNC(...) throws $EXC {
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: ^do[A-Z]
+      - pattern-either:
+          - pattern: $RSP.serveFile(...)
+          - pattern: new FileInputStream($FILE)
+          - pattern: new ZipFile($ARCHIVE)
+      - pattern-not-inside: |
+          public $RET $FUNC(...) {
+            ...
+            $X.checkPermission($PERM);
+            ...
+          }
+      - pattern-not-inside: |
+          public $RET $FUNC(...) throws $EXC {
+            ...
+            $X.checkPermission($PERM);
+            ...
+          }
+      - pattern-not-inside: |
+          public $RET $FUNC(...) {
+            ...
+            $X.hasPermission($PERM);
+            ...
+          }
+      - pattern-not-inside: |
+          public $RET $FUNC(...) throws $EXC {
+            ...
+            $X.hasPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Stapler HTTP handler (do* method) that serves file
+      content (FileInputStream / serveFile / ZipFile) without calling
+      checkPermission/hasPermission anywhere in the method. In Jenkins,
+      do* methods on actions are routed directly by Stapler and are not
+      protected by any permission by default; the URL is reachable by any
+      user who can access the enclosing model object (e.g. a build page),
+      including anonymous users when global read is enabled. A handler
+      that streams files with no explicit access check exposes build
+      logs, report archives and workspace data to unauthorized users.
+      Guard the handler with an explicit permission check such as
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER) or
+      build.checkPermission(Run.READ) before touching any file.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/permissions/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
