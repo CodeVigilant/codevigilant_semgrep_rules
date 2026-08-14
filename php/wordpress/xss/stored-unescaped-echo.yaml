@@ -1,0 +1,93 @@
+rules:
+  - id: codevigilant.php.wordpress.xss.stored.array_value_echo_unescaped
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern: $ARR[$KEY]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: echo $...EXPR;
+              - pattern: print $...EXPR;
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: esc_html(...)
+              - pattern: esc_attr(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: esc_textarea(...)
+              - pattern: esc_js(...)
+              - pattern: htmlspecialchars(...)
+              - pattern: htmlentities(...)
+              - pattern: wp_kses(...)
+              - pattern: wp_kses_post(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_key(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+              - pattern: (int) $X
+              - pattern: (string) $X
+    message: |
+      An array-element value (typically role/capability/option data loaded from the
+      WordPress database) is echoed without an escaping function. If the stored value
+      can contain HTML (e.g. role display names created by other plugins or imports),
+      the unescaped output becomes stored XSS (CWE-79).
+      Escape with esc_html() / esc_attr() before output.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/plugins/security/securing-output/
+      source: CodeVigilant
+      license: MIT
+
+  - id: codevigilant.php.wordpress.xss.stored.foreach_value_echo_unescaped
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-inside: |
+          foreach ($ARR as $VAL) {
+            ...
+          }
+      - pattern: echo $VAL;
+      - pattern-not-inside: |
+          echo esc_html($VAL);
+      - pattern-not-inside: |
+          echo esc_attr($VAL);
+      - pattern-not-inside: |
+          echo esc_url($VAL);
+      - pattern-not-inside: |
+          echo esc_url_raw($VAL);
+      - pattern-not-inside: |
+          echo esc_textarea($VAL);
+      - pattern-not-inside: |
+          echo htmlspecialchars($VAL);
+      - pattern-not-inside: |
+          echo htmlentities($VAL);
+      - pattern-not-inside: |
+          echo wp_kses($VAL, ...);
+      - pattern-not-inside: |
+          echo wp_kses_post($VAL);
+    message: |
+      A value taken from a foreach loop (typically role/capability/option data loaded
+      from the WordPress database) is echoed without an escaping function. If the
+      stored value can contain HTML, the unescaped output becomes stored XSS (CWE-79).
+      Escape with esc_html() / esc_attr() before output.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/plugins/security/securing-output/
+      source: CodeVigilant
+      license: MIT
