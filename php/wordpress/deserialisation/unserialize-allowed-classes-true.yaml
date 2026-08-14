@@ -1,0 +1,57 @@
+rules:
+  # ============================================================================
+  # UNSERIALIZE WITH allowed_classes => true
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags unserialize() calls whose options argument is (or is derived from)
+  # an array built with allowed_classes => true. Unlike the single-argument
+  # form (covered by deserialize.yaml / deserialize-storage.yaml) and unlike
+  # allowed_classes => false, allowing ALL classes re-enables PHP Object
+  # Injection for any attacker-influenceable serialized value (post meta,
+  # options, transients, DB rows written by lower-privileged users or other
+  # plugins): every object in the payload is instantiated and its magic
+  # methods (__wakeup/__destruct/__toString) run, enabling POP gadget chains
+  # (CWE-502). Use allowed_classes => false or an explicit allow-list.
+
+  - id: codevigilant.php.wordpress.insecure_deserialization.allowed_classes_true
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: array('allowed_classes' => true)
+          - pattern: "['allowed_classes' => true]"
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: unserialize($DATA, $OPTS)
+              - pattern: \unserialize($DATA, $OPTS)
+              - pattern: $CLASS::unserialize($DATA, $OPTS)
+          - pattern-not:
+              patterns:
+                - pattern-either:
+                    - pattern: unserialize($DATA, array('allowed_classes' => false))
+                    - pattern: unserialize($DATA, ['allowed_classes' => false])
+                    - pattern: \unserialize($DATA, array('allowed_classes' => false))
+                    - pattern: \unserialize($DATA, ['allowed_classes' => false])
+    message: |
+      Detected unserialize() invoked with allowed_classes => true (or an
+      options array built with that value). Every class in the serialized
+      payload is instantiated, so any attacker-influenceable serialized value
+      (post meta, options, transients, DB rows) becomes a PHP Object
+      Injection primitive with potential POP-gadget code execution (CWE-502).
+      Use unserialize($data, ['allowed_classes' => false]) or an explicit
+      class allow-list, and validate the result shape.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+        - https://www.php.net/manual/en/function.unserialize.php
+      source: CodeVigilant
+      license: MIT
