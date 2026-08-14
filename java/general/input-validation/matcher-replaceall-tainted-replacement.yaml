@@ -1,0 +1,33 @@
+rules:
+  - id: codevigilant.java.general.input-validation.matcher-replaceall-tainted-replacement
+    mode: taint
+    pattern-sources:
+      - pattern: $MAP.get($KEY)
+      - pattern: $MAP.getOrDefault($KEY, $DEF)
+      - pattern: System.getenv($NAME)
+      - pattern: System.getProperty($NAME)
+      - pattern: $REQ.getParameter($NAME)
+    pattern-sinks:
+      - pattern: $MATCHER.replaceAll($REPL)
+      - pattern: $MATCHER.appendReplacement($SB, $REPL)
+    message: |
+      Detected a non-literal replacement string flowing into
+      Matcher.replaceAll/appendReplacement. Java replacement strings treat
+      '$' and '\' as metacharacters: a '$' followed by a digit or '{' is
+      resolved as a back-reference to a capturing group, so an
+      attacker-influenced replacement (e.g. a build parameter or environment
+      value such as '$1') throws an unchecked exception ('No group 1') or
+      silently substitutes the wrong text, enabling denial of service or
+      string-manipulation bugs. Wrap the replacement with
+      Matcher.quoteReplacement() before passing it to the matcher.
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output Used by a Downstream Component"
+      owasp: "A03:2021 - Injection"
+      confidence: MEDIUM
+      references:
+        - https://docs.oracle.com/javase/8/docs/api/java/util/regex/Matcher.html#quoteReplacement-java.lang.String-
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: MEDIUM
