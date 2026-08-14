@@ -1,0 +1,32 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.httpclient.auth-header
+    patterns:
+      - pattern-either:
+          - pattern: $REQ.setHeader("Authorization", $AUTH);
+          - pattern: $REQ.addHeader("Authorization", $AUTH);
+      - pattern-not: $REQ.setHeader("Authorization", "...");
+      - pattern-not: $REQ.addHeader("Authorization", "...");
+    message: |
+      Detected an Authorization header attached to an Apache HttpClient
+      request object (setHeader/addHeader) with a non-literal value. When the
+      credential value is computed from stored credentials and the request
+      URL is derived from configuration, build parameters or other
+      user-influenced input, the configured credentials can be forwarded to
+      attacker-chosen hosts (credential disclosure, CWE-522) and internal
+      services can be reached from the Jenkins controller (SSRF, CWE-918).
+      Validate the target URL at runtime before attaching credentials:
+      restrict the scheme to https, check the host against an allow-list, and
+      never send credentials over plaintext http.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: MEDIUM
