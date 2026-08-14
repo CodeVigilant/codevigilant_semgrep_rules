@@ -1,0 +1,45 @@
+rules:
+  # ============================================================================
+  # wp_upload_dir() CALLED WITH A NON-LITERAL / UNVALIDATED TIME (CWE-22)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags wp_upload_dir() calls whose $time argument is a variable or
+  # expression instead of a literal or current_time(). WordPress builds the
+  # upload subdirectory from $time with substr($time,0,4) and
+  # substr($time,5,2) and concatenates the result into the uploads path.
+  # Values that contain "../" sequences therefore escape the uploads
+  # directory (path traversal): files are then written outside
+  # wp-content/uploads (e.g. into the web root). $time derived from
+  # imported files, request input, or unvalidated post/term metadata is
+  # attacker-controllable and must be validated (e.g. /^\d{4}\/\d{2}$/)
+  # before being passed to wp_upload_dir().
+
+  - id: codevigilant.php.wordpress.filesystem.upload.wp_upload_dir.unvalidated_time
+    message: >-
+      wp_upload_dir() is called with a non-literal $time argument. The
+      subdirectory is derived from the string via substr() and concatenated
+      into the uploads path, so values containing "../" escape the uploads
+      directory (CWE-22 path traversal) and files are written outside
+      wp-content/uploads. Validate $time against a strict date pattern
+      (e.g. /^\d{4}\/\d{2}$/) or derive it with current_time() before use.
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern: wp_upload_dir($TIME)
+      - pattern-not: wp_upload_dir("...")
+      - pattern-not: wp_upload_dir(null)
+      - pattern-not: wp_upload_dir(current_time(...))
+      - pattern-not: wp_upload_dir(date(...))
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_upload_dir/
+        - https://owasp.org/www-community/attacks/Path_Traversal
+      source: Generic (CodeVigilant)
+      license: MIT

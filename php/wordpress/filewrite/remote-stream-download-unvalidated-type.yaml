@@ -1,0 +1,59 @@
+rules:
+  # ============================================================================
+  # REMOTE FILE STREAMED INTO UPLOADS WITHOUT FILE-TYPE VALIDATION
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags the shape where a remote file is streamed straight into a
+  # web-accessible upload path (wp_upload_bits + wp_remote_get with
+  # 'stream' => true) without an extension/MIME allowlist enforced on the
+  # downloaded file. The remote URL is typically taken from an import
+  # document, feed or user-supplied value, so the file NAME and CONTENT are
+  # attacker-influenced: a '.php' (or other executable) name is preserved by
+  # sanitize_file_name(), and on servers that execute PHP inside the uploads
+  # directory this becomes arbitrary code execution; at minimum it enables
+  # hosting attacker-controlled content on the victim origin (CWE-434 / CWE-79).
+  # Validate the extension AND content (magic bytes / MIME allowlist) and
+  # re-name the stored file with a server-generated safe extension before
+  # writing, then verify wp_check_filetype() strictly (it returns an array
+  # even for unknown types, so a truthiness test is not a validation).
+
+  - id: codevigilant.php.wordpress.filewrite.remote_stream_download_unvalidated_type
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern: |
+          wp_upload_bits( $FILE_NAME, ... );
+          ...
+          wp_remote_get( $URL, array( 'stream' => true, ... ) );
+      - pattern-not-inside: |
+          wp_upload_bits( $FILE_NAME, ... );
+          ...
+          wp_check_filetype( <... $FILE ...> );
+      - pattern-not-inside: |
+          wp_upload_bits( $FILE_NAME, ... );
+          ...
+          in_array( <... $EXT ...>, $ALLOWED_EXTENSIONS, ... );
+    message: |
+      A remote file is streamed into a web-accessible upload path
+      (wp_upload_bits + wp_remote_get(..., 'stream' => true)) without an
+      extension/MIME allowlist applied to the downloaded file between the
+      write and the fetch. The remote name/content is attacker-influenced,
+      so an executable extension (e.g. .php) can be stored under uploads and
+      executed by servers that run PHP there - arbitrary code execution
+      (CWE-434). Enforce a strict extension AND magic-byte/MIME allowlist and
+      store the file under a server-generated safe name.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_upload_bits/
+        - https://developer.wordpress.org/reference/functions/wp_remote_get/
+        - https://developer.wordpress.org/reference/functions/wp_check_filetype/
+        - https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload
+      source: CodeVigilant
+      license: MIT

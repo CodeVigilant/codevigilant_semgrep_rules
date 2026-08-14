@@ -1,0 +1,31 @@
+rules:
+  # ============================================================================
+  # PATH TRAVERSAL SANITIZATION VIA str_replace() ON "../"
+  # Stripping "../" with str_replace() is not iterative and can be bypassed with
+  # encodings such as "....//" (the inner "../" is removed, leaving "../").
+  # It also does not normalize absolute paths. Paths that are later used in
+  # include/require/read/write operations can escape the intended directory.
+  # ============================================================================
+  - id: codevigilant.php.wordpress.path-traversal.str_replace.traversal_attempt.direct
+    message: "Path traversal sanitization using str_replace() to strip '../' is insufficient and bypassable (e.g. '....//'), and does not normalize absolute paths. Validate the resolved path with realpath() and a directory-prefix check instead."
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: str_replace("../", "", ...)
+          - pattern: str_replace('../', '', ...)
+          - pattern: str_replace("..\\", "", ...)
+          - pattern: str_replace('..\\', '', ...)
+          - pattern: str_replace("../", '', ...)
+          - pattern: str_replace('../', "", ...)
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+        - https://owasp.org/www-community/attacks/Path_Traversal
+      source: bug-hunting code review (generic code shape)
+      license: MIT

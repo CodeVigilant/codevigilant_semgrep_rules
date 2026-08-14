@@ -1,0 +1,46 @@
+rules:
+  - id: codevigilant.php.wordpress.path-traversal.tainted_file_read
+    message: >
+      Detected user-controlled input flowing into a file access function
+      (file_get_contents, fopen, readfile, file, file_put_contents) without a
+      sanitizer. An attacker-controlled path can read or write arbitrary files
+      on the server (path traversal / arbitrary file read-write). Validate that
+      the resolved path stays inside an allowed base directory (e.g. the
+      uploads dir) and sanitize the filename first.
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[$KEY]
+              - pattern: $_POST[$KEY]
+              - pattern: $_REQUEST[$KEY]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: file_get_contents($PATH)
+              - pattern: fopen($PATH, ...)
+              - pattern: readfile($PATH)
+              - pattern: file($PATH)
+              - pattern: file_put_contents($PATH, ...)
+              - pattern: fwrite(fopen($PATH, ...), ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: basename(...)
+              - pattern: sanitize_file_name(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: wp_upload_bits(...)
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: bug-hunting-round-analysis
+      license: MIT

@@ -1,0 +1,97 @@
+rules:
+  # ============================================================================
+  # Path traversal in filesystem write operations fed by request data
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags filesystem write / directory-creation sinks (file_put_contents,
+  # fopen, fwrite, mkdir, rename, unlink, copy, WP_Filesystem put_contents,
+  # touch) whose path argument is tainted by a request-derived superglobal
+  # ($_GET, $_POST, $_REQUEST, $_COOKIE, $_SERVER['REQUEST_URI'],
+  # $_SERVER['HTTP_HOST'], $_FILES) without sanitization.
+  #
+  # The raw REQUEST_URI / HTTP_HOST values are fully attacker-controlled and
+  # may contain "../" path segments. When such a value is concatenated into a
+  # path that reaches a write sink, an unauthenticated caller can create
+  # directories and write files outside the intended directory (arbitrary
+  # file write, cache poisoning, defacement, disk exhaustion). Note that
+  # parse_url()/wp_parse_url() do NOT neutralize "../" segments, so they are
+  # intentionally NOT treated as sanitizers here. Sanitize the final path
+  # with basename(), sanitize_file_name(), wp_normalize_path(), or enforce a
+  # realpath() containment check before writing.
+
+  - id: codevigilant.php.wordpress.fileops.path-traversal.superglobal.write
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET
+          - pattern: $_POST
+          - pattern: $_REQUEST
+          - pattern: $_COOKIE
+          - pattern: $_FILES
+          - pattern: $_SERVER['REQUEST_URI']
+          - pattern: $_SERVER['HTTP_HOST']
+          - pattern: $_SERVER['PHP_SELF']
+    pattern-sinks:
+      - pattern-either:
+          - pattern: file_put_contents($PATH, ...)
+          - pattern: fopen($PATH, ...)
+          - pattern: fwrite($HANDLE, ...)
+          - pattern: fputs($HANDLE, ...)
+          - pattern: mkdir($PATH, ...)
+          - pattern: rename($SRC, $DST)
+          - pattern: unlink($PATH)
+          - pattern: copy($SRC, $DST)
+          - pattern: touch($PATH, ...)
+          - pattern: $OBJ->put_contents($PATH, ...)
+          - pattern: $OBJ->write($PATH, ...)
+    pattern-propagators:
+      # URL parsers propagate taint: they keep the (possibly "../"-laden)
+      # path/host components intact, so their output must remain tracked.
+      - pattern: wp_parse_url($X)
+        from: $X
+        to: $RESULT
+      - pattern: parse_url($X)
+        from: $X
+        to: $RESULT
+      - pattern: wp_parse_args($X)
+        from: $X
+        to: $RESULT
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: basename($X)
+          - pattern: dirname($X)
+          - pattern: realpath($X)
+          - pattern: sanitize_file_name($X)
+          - pattern: wp_normalize_path($X)
+          - pattern: sanitize_text_field($X)
+          - pattern: esc_url_raw($X)
+          - pattern: wp_unique_filename($DIR, $X)
+    message: |
+      Detected a potential path traversal: request-controlled data
+      (superglobal) flows into a filesystem write or directory-creation
+      path without sanitization. $_SERVER['REQUEST_URI'],
+      $_SERVER['HTTP_HOST'], $_GET/$_POST/$_COOKIE and similar values are
+      attacker-controlled and may contain "../" segments; used in
+      file_put_contents()/fopen()/fwrite()/mkdir()/rename()/unlink()/copy()/
+      touch() paths this allows writing files or creating directories
+      outside the intended directory (arbitrary file write, cache
+      poisoning, defacement, disk exhaustion). parse_url()/wp_parse_url()
+      do NOT strip "../", so they are not sufficient sanitizers. Apply
+      basename()/sanitize_file_name()/wp_normalize_path() or enforce a
+      realpath() containment check on the full resolved path before the
+      write.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://developer.wordpress.org/apis/security/securing-files/
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+      source: CodeVigilant
+      license: MIT

@@ -1,0 +1,99 @@
+rules:
+  # ============================================================================
+  # FILE DELETION DRIVEN BY AN UNVALIDATED DIRECTORY LISTING
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags file-deletion loops that iterate over a directory listing
+  # (scandir()) and delete entries with wp_delete_file()/unlink() using a path
+  # composed of the scanned directory and the loop variable, where the only
+  # guard is a filename pattern/regex instead of an explicit allowlist
+  # membership check (in_array() against a database-backed or registered set).
+  #
+  # When the deletion set is derived from "whatever matches a filename shape in
+  # this directory", legitimate files that merely LOOK like the intended target
+  # (e.g. a user-uploaded image named "photo-640x480.jpg" that is a fullsize
+  # file, not a generated thumbnail) get destroyed. Allowlist construction bugs
+  # (empty whitelist, wrong path prefix, unanchored regex) silently convert such
+  # loops into arbitrary file deletion within (or via path concatenation,
+  # outside) the scanned directory. Deleting a file that is itself the target
+  # of a whitelist/regex guard is safe only when the guard is an explicit
+  # allowlist membership test on the loop variable; anything else is a
+  # data-loss primitive in the hands of whoever can trigger the operation.
+  #
+  # CWE-22: Improper Limitation of a Pathname to a Restricted Directory
+  # CWE-59: Improper Link Resolution Before File Access
+
+  - id: codevigilant.php.wordpress.fileops.scandir_delete_unvalidated
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: |
+              foreach (scandir($DIR) as $FILE) {
+                  ...
+                  wp_delete_file($DIR . $FILE);
+                  ...
+              }
+          - pattern: |
+              foreach (scandir($DIR) as $FILE) {
+                  ...
+                  unlink($DIR . $FILE);
+                  ...
+              }
+      # Exclude loops that gate deletion on an explicit allowlist membership
+      # check of the loop variable before the delete call.
+      - pattern-not: |
+          foreach (scandir($DIR) as $FILE) {
+              ...
+              if (in_array($FILE, $ALLOW)) { ... }
+              ...
+              wp_delete_file($DIR . $FILE);
+              ...
+          }
+      - pattern-not: |
+          foreach (scandir($DIR) as $FILE) {
+              ...
+              if (in_array($FILE, $ALLOW)) { ... }
+              ...
+              unlink($DIR . $FILE);
+              ...
+          }
+      - pattern-not: |
+          foreach (scandir($DIR) as $FILE) {
+              ...
+              if (in_array($FILE, $ALLOW) || in_array($FILE, $ALLOW2)) { ... }
+              ...
+              wp_delete_file($DIR . $FILE);
+              ...
+          }
+      - pattern-not: |
+          foreach (scandir($DIR) as $FILE) {
+              ...
+              if (in_array($FILE, $ALLOW) || in_array($FILE, $ALLOW2)) { ... }
+              ...
+              unlink($DIR . $FILE);
+              ...
+          }
+    message: |
+      Files are deleted from a directory listing (scandir()) with no explicit
+      allowlist membership check (in_array()) on the loop variable before
+      wp_delete_file()/unlink(). When the deletion set is decided only by a
+      filename pattern, legitimate files that look like the intended target
+      (e.g. a fullsize upload named like a generated thumbnail) are destroyed.
+      Guard every delete with an explicit allowlist check of the filename, and
+      verify the allowlist is computed from the same directory scope being
+      scanned (correct path prefix, anchored pattern, non-empty result).
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_delete_file/
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://cwe.mitre.org/data/definitions/22.html
+      source: CodeVigilant
+      license: MIT

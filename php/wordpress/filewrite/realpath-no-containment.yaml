@@ -1,0 +1,111 @@
+rules:
+  # ============================================================================
+  # REALPATH() WITHOUT CONTAINMENT CHECK
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # realpath() resolves '..' segments and symlinks but performs NO containment
+  # guarantee. When a path built from request-derived input (superglobals or a
+  # $params array populated from the request body) is passed through realpath()
+  # and then handed to a file-reading/opening operation without verifying that
+  # the resolved path still starts with the intended base directory, an attacker
+  # can read or open arbitrary files outside the allowed root (e.g.
+  # ../../../../etc/passwd). This is CWE-22. realpath() must be followed by a
+  # prefix containment check (strpos($resolved, $base) === 0) or each path
+  # segment must be validated (basename/sanitize_file_name) before the
+  # file operation.
+
+  - id: codevigilant.php.wordpress.filewrite.realpath_no_containment
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[$KEY]
+              - pattern: $_POST[$KEY]
+              - pattern: $_REQUEST[$KEY]
+              - pattern: $_SERVER[$KEY]
+              - pattern: $_COOKIE[$KEY]
+              - pattern: $params[$KEY]
+              - pattern: $params[$KEY][$KEY2]
+    pattern-propagators:
+      - pattern: (string) $X
+        from: $X
+        to: (string) $X
+      - pattern: strval($X)
+        from: $X
+        to: strval($X)
+      - pattern: trim($X)
+        from: $X
+        to: trim($X)
+      - pattern: rtrim($X, $ARGS)
+        from: $X
+        to: rtrim($X, $ARGS)
+      - pattern: ltrim($X, $ARGS)
+        from: $X
+        to: ltrim($X, $ARGS)
+      - pattern: str_replace($A, $B, $X)
+        from: $X
+        to: str_replace($A, $B, $X)
+      - pattern: strtr($X, $ARGS)
+        from: $X
+        to: strtr($X, $ARGS)
+      - pattern: urldecode($X)
+        from: $X
+        to: urldecode($X)
+      - pattern: rawurldecode($X)
+        from: $X
+        to: rawurldecode($X)
+      - pattern: realpath($X)
+        from: $X
+        to: realpath($X)
+      - pattern: untrailingslashit($X) . $SEP . $Y
+        from: $Y
+        to: untrailingslashit($X) . $SEP . $Y
+      - pattern: $BASE . $SEP . $X
+        from: $X
+        to: $BASE . $SEP . $X
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fopen($PATH, ...)
+              - pattern: file_get_contents($PATH)
+              - pattern: file($PATH)
+              - pattern: readfile($PATH)
+              - pattern: md5_file($PATH)
+              - pattern: filesize($PATH)
+              - pattern: filemtime($PATH)
+              - pattern: file_exists($PATH)
+              - pattern: is_file($PATH)
+              - pattern: unlink($PATH)
+              - pattern: copy($PATH, ...)
+              - pattern: rename($PATH, ...)
+              - pattern: new SplFileObject($PATH)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: basename($X)
+              - pattern: sanitize_file_name($X)
+              - pattern: wp_normalize_path($X)
+    message: |
+      A filesystem path is derived from request input and resolved with
+      realpath() (or a concatenated path) before a file read/open operation,
+      without a containment check that the resolved path stays inside the
+      intended base directory. realpath() collapses '../' segments and follows
+      symlinks but does not confine the result, so an attacker-controlled
+      relative path such as ../../../etc/passwd escapes the allowed root and
+      leads to arbitrary file read/open (path traversal, CWE-22). Validate each
+      path segment (basename/sanitize_file_name) or enforce
+      strpos($realPath, $base) === 0 before performing the operation.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+        - https://www.php.net/manual/en/function.realpath.php
+      source: CodeVigilant
+      license: MIT
