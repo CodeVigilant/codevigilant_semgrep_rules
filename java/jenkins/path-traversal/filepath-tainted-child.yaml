@@ -1,0 +1,34 @@
+rules:
+  - id: codevigilant.java.jenkins.path-traversal.filepath.tainted-child
+    patterns:
+      - pattern-either:
+          - pattern: $BASE.child($REL)
+          - pattern: |
+              new FilePath($BASE, $REL)
+      - pattern-not: $BASE.child("...")
+      - pattern-not: |
+          new FilePath($BASE, "...")
+    message: |
+      Detected a FilePath resolved from a potentially attacker-influenced,
+      non-literal path via $BASE.child($REL) or new FilePath($BASE, $REL)
+      without an explicit containment check. Jenkins' FilePath(base, rel)
+      returns rel unchanged when it is absolute (so the base is replaced
+      entirely), and for relative inputs only normalize()s the concatenation,
+      so '..' segments climb above the base. A path escaping the workspace
+      root enables arbitrary file read/write on the agent (CWE-22). Validate
+      that the resolved path stays under the intended base (e.g. isDescendant
+      / isUnder), and reject absolute paths and '..' segments when the input
+      is not fully trusted.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Path_Traversal
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH

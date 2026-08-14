@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.descriptor-configure-without-permission
+    patterns:
+      - pattern-inside: |
+          public boolean configure(...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: save()
+          - pattern: $OBJ.save()
+      - pattern-not-inside: |
+          public boolean configure(...) {
+            ...
+            $X.checkPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Descriptor.configure(...) override that persists configuration
+      (calls save()) without an explicit ACL permission check. In Jenkins,
+      Descriptor subclasses are Stapler-exposed objects and their configure()
+      method is invoked with the submitted JSON during the configuration flow;
+      an override that mutates/persists state must perform an explicit
+      permission check (e.g. Jenkins.get().checkPermission(Jenkins.ADMINISTER))
+      and must not rely solely on the surrounding core flow. Guard the method
+      with the appropriate permission check before any state mutation or
+      save() call.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH

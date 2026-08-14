@@ -1,0 +1,33 @@
+rules:
+  - id: codevigilant.java.jenkins.dos.regex.tainted-pattern
+    patterns:
+      - pattern-either:
+          - pattern: $X.matches($PATTERN)
+          - pattern: |
+              Pattern.compile($PATTERN)
+      - pattern-not: $X.matches("...")
+      - pattern-not: |
+          Pattern.compile("...")
+    message: |
+      Detected a regular expression compiled from a non-literal value
+      (configuration, request parameter, or other potentially
+      attacker-influenced input) and applied via String.matches() or
+      Pattern.compile(). Java's regex engine is vulnerable to catastrophic
+      backtracking: a crafted pattern (e.g. (a+)+$) matched against
+      attacker-influenced strings can exhaust CPU and hang the calling thread
+      (ReDoS, CWE-1333). Validate/restrict the pattern (syntax AND complexity),
+      anchor it, or apply a timeout when the pattern source is not fully
+      trusted.
+    metadata:
+      category: security
+      cwe: "CWE-1333: Inefficient Regular Expression Complexity"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH

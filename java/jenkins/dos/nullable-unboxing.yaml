@@ -1,0 +1,33 @@
+rules:
+  - id: codevigilant.java.jenkins.dos.nullable-unboxing
+    patterns:
+      - pattern: $P.booleanValue()
+      - metavariable-regex:
+          metavariable: $P
+          regex: ^[a-z][A-Za-z0-9_]*$
+      - pattern-not-inside: |
+          if ($P != null) {
+            ...
+          }
+    message: |
+      Detected an unboxing call ($P.booleanValue()) on a simple-identifier
+      receiver with no enclosing null guard. When the receiver originates from
+      a method parameter or a data-bound field (e.g. a Boolean object bound
+      from an HTTP form / JSON submission), a missing form key or an explicit
+      null yields a NullPointerException that aborts request handling and can
+      turn into an unhandled 500 (availability / DoS). Guard the receiver with
+      a null check before unboxing, or use null-safe semantics such as
+      Boolean.TRUE.equals($P).
+    metadata:
+      category: security
+      cwe: "CWE-476: NULL Pointer Dereference"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: LOW
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Null_Dereference
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: WARNING
