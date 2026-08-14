@@ -1,0 +1,79 @@
+rules:
+  # ============================================================================
+  # POST IDs FROM parse_str() WRITTEN VIA $wpdb->update WITHOUT OBJECT-SCOPED
+  # CAPABILITY CHECK (IDOR)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # AJAX / admin handlers that unserialize request data with parse_str() and
+  # then write $wpdb->posts rows keyed by the attacker-chosen post IDs
+  # (array('ID' => $id)) protect those writes with at most a *generic*
+  # capability check (current_user_can($cap)). A generic capability such as
+  # edit_posts does not authorize acting on a specific post, so any user
+  # holding the generic capability can reorder/reparent/modify posts they do
+  # not own - an Insecure Direct Object Reference (IDOR).
+  #
+  # Functions that scope the check to the object
+  # (current_user_can($cap, $id)) are excluded via pattern-not-inside.
+  #
+  # CWE-639: Authorization Bypass Through User-Controlled Key
+
+  - id: codevigilant.php.wordpress.auth.parsestr_postid_wpdb_update_without_object_capability
+    severity: WARNING
+    languages: [php]
+    mode: search
+    patterns:
+      # --- function contains a parse_str() -> $wpdb->update(posts) chain ---
+      - pattern-inside: |
+          function $FUNC(...) {
+              ...
+              parse_str($SRC, $DATA);
+              ...
+              $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID));
+              ...
+          }
+      - pattern: $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID))
+      # --- Exclude functions that scope the capability to the object ---
+      - pattern-not-inside: |
+          if ( ! current_user_can($CAP, $ID) ) {
+              continue;
+          }
+          $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID));
+      - pattern-not-inside: |
+          if ( ! current_user_can($CAP, $ID) ) {
+              return;
+          }
+          $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID));
+      - pattern-not-inside: |
+          if ( ! current_user_can($CAP, $ID) ) {
+              return false;
+          }
+          $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID));
+      - pattern-not-inside: |
+          if ( current_user_can($CAP, $ID) ) {
+              $wpdb->update($wpdb->posts, $VALUES, array('ID' => $ID));
+          }
+      # --- Exclude updates that harden the ID before the write ---
+      - pattern-not: $wpdb->update($wpdb->posts, $VALUES, array('ID' => absint($ID)))
+      - pattern-not: $wpdb->update($wpdb->posts, $VALUES, array('ID' => intval($ID)))
+      - pattern-not: $wpdb->update($wpdb->posts, $VALUES, array('ID' => (int) $ID))
+    message: |
+      Detected a write to wp_posts keyed by post IDs taken from parse_str()
+      request data without an object-scoped capability check. The handler
+      verifies at most a generic capability (current_user_can($cap)), which
+      does not prove the caller may act on the specific posts referenced by
+      the IDs, so any user with the generic capability can modify posts they
+      do not own (IDOR, CWE-639). Scope the authorization to each object
+      (current_user_can('edit_post', $id)) or validate ownership before
+      updating.
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/reference/classes/wpdb/update/
+      source: CodeVigilant
+      license: MIT
