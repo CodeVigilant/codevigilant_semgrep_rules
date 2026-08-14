@@ -1,0 +1,26 @@
+rules:
+  - id: codevigilant.java.jenkins.insecure-global-state.cookiehandler-setdefault
+    patterns:
+      - pattern: CookieHandler.setDefault($HANDLER);
+      - pattern-not: CookieHandler.setDefault(null);
+    message: |
+      Detected a call that replaces the JVM-wide default CookieHandler. In a
+      Jenkins controller this changes cookie handling for all java.net HTTP
+      clients in the process: cookies received from any host (including
+      attacker-influenced remote endpoints) are stored and replayed on later
+      connections, and each replacement silently discards the previous cookie
+      store. Use a per-request or per-client cookie store instead of mutating
+      global JVM state.
+    metadata:
+      category: security
+      cwe: "CWE-664: Improper Control of a Resource Through its Lifetime"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: WARNING
