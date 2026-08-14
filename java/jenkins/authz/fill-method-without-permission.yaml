@@ -1,0 +1,45 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.fill.without-permission
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: '^doFill[A-Z][A-Za-z0-9]*$'
+      - pattern-either:
+          - pattern: $MODEL.add($VAL, $NAME);
+          - pattern: $MODEL.add($VAL);
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $Y.checkPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Stapler 'doFill*' descriptor method (a form dropdown/select
+      filler) that returns data without an explicit ACL permission check. In
+      Jenkins, 'do*' methods on Descriptors are routed directly by Stapler and
+      are not protected by any permission by default; @RequirePOST only
+      enforces POST + CSRF crumb. When a doFill method exposes data derived
+      from global configuration (hostnames, ports, credentials IDs, internal
+      infrastructure), any user who can reach the descriptor URL — including
+      anonymous users on instances with anonymous read — can enumerate that
+      data (information disclosure, CWE-200). Guard the method with an
+      explicit permission check such as
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER) (or the appropriate
+      Item permission) before returning model data.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
