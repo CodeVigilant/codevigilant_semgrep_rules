@@ -1,0 +1,47 @@
+rules:
+  - id: codevigilant.java.jenkins.dos.runlistener.synchronous-call
+    patterns:
+      - pattern-inside: |
+          class $L extends RunListener<$T> {
+            ...
+          }
+      - pattern-either:
+          - pattern-inside: |
+              public void onFinalized(Run $RUN) {
+                ...
+              }
+          - pattern-inside: |
+              public void onCompleted(Run $RUN, TaskListener $LISTENER) {
+                ...
+              }
+      - pattern: $CH.call($CALLABLE)
+      - metavariable-regex:
+          metavariable: $CH
+          regex: (?i)(.*channel.*|^ch$)
+    message: |
+      Detected a synchronous, blocking remoting call ($CH.call(...)) inside a
+      RunListener callback (onFinalized/onCompleted). Listener callbacks run
+      on the build's executor thread on the controller: a channel round-trip
+      performed here blocks build finalization with no timeout. If the agent
+      is unresponsive (hung process, network blackhole) the executor thread
+      is pinned indefinitely, and with repeated failures all executors can
+      be exhausted - a controller-side denial of service (CWE-400). The
+      Jenkins core performs node/agent probes asynchronously
+      (callAsync + a bounded future timeout on a dedicated monitoring
+      thread); mirror that pattern - dispatch the probe to a separate
+      thread/future with a timeout, or use callAsync, and never block a
+      listener callback on an unbounded remote call.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/developer/extensions/run-listener/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
