@@ -1,0 +1,48 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.dohandler-httpresponses-without-permission
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: '^do[A-Z][A-Za-z0-9]*$'
+      - pattern: HttpResponses.$METHOD($ARG)
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $Y.checkPermission($PERM);
+            ...
+          }
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $Y.hasPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Stapler 'do*' handler (routed directly by Stapler with no
+      default ACL enforcement) that emits output through HttpResponses
+      without any explicit permission check in the method. The response may
+      contain data derived from global configuration, stored credentials or
+      remote-server responses (scan reports, status pages, file content).
+      Any user who can reach the URL - including anonymous users on
+      instances with anonymous read access - can invoke the handler and
+      receive that data (missing authorization, CWE-862 / CWE-200). Guard
+      the handler with an explicit permission check (e.g.
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER) or the appropriate
+      Item/Run permission) before returning content.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
