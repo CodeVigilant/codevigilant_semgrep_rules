@@ -1,0 +1,28 @@
+rules:
+  - id: codevigilant.html.reversetabnabbing.anchor.missing-noopener
+    patterns:
+      - pattern: <a ... target="_blank" ...>
+      - pattern-not: <a ... rel="noopener" ...>
+      - pattern-not: <a ... rel="noreferrer" ...>
+      - pattern-not: <a ... rel="noopener noreferrer" ...>
+      - pattern-not: <a ... rel="noreferrer noopener" ...>
+      - pattern-not-regex: (?i)rel=["'][^"']*noopener
+      - pattern-not-regex: (?i)rel=["'][^"']*noreferrer
+    message: |
+      Detected an anchor with target="_blank" that does not specify
+      rel="noopener noreferrer". The opened page obtains a reference to the
+      opener window (window.opener) and can navigate or partially manipulate
+      it (reverse tabnabbing). Add rel="noopener noreferrer" to the anchor.
+    metadata:
+      category: security
+      cwe: "CWE-1022: Use of Web Link to Untrusted Target with window.opener Access"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: html
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/attacks/Reverse_Tabnabbing
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: MIT
+    languages: [html]
+    mode: search
+    severity: LOW
