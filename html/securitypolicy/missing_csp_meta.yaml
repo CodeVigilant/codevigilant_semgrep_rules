@@ -1,0 +1,25 @@
+rules:
+  - id: codevigilant.html.securitypolicy.missing-csp-meta
+    patterns:
+      - pattern: <html>...</html>
+      - pattern-not-regex: (?i)<meta[^>]*http-equiv=["']?\s*Content-Security-Policy
+    message: |
+      Detected an HTML document without a Content-Security-Policy.
+      Pages served without a CSP meta tag (or header) rely on browser
+      defaults, so any injected or third-party script executes with full
+      privileges. Add a Content-Security-Policy meta tag restricting
+      default-src, script-src and object-src.
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: html
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/controls/Content_Security_Policy
+        - https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: MIT
+    languages: [html]
+    mode: search
+    severity: LOW
