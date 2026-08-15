@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.reflection.setaccessible.true
+    patterns:
+      - pattern-either:
+          - pattern: $X.setAccessible(true)
+          - pattern: |
+              $X.accessible = true
+      - pattern-not: $X.setAccessible(false)
+    message: |
+      Detected reflective access turned on via setAccessible(true) (or the
+      Groovy property-assignment form `accessible = true`) on a
+      Field/Method/Constructor obtained from a class. setAccessible(true)
+      suppresses the Java language access checks, letting plugin code reach
+      protected/private members of other classes. In Jenkins this is
+      typically used to reach into core internals, bypassing the
+      access-control and safety guardrails the framework places around
+      protected APIs (permission checks, async isolation, timeouts,
+      synchronization). It also breaks under the Java module system
+      (InaccessibleObjectException). Prefer the public API; if internals
+      are genuinely needed, use the supported extension points or
+      Restricted/NoExternalUse APIs instead of reflection.
+    metadata:
+      category: security
+      cwe: "CWE-284: Improper Access Control"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/developer/extensions/
+      source: independent security review
+      license: MIT
+    languages: [generic]
+    mode: search
+    severity: HIGH

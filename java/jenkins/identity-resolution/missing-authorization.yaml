@@ -1,0 +1,53 @@
+rules:
+  - id: codevigilant.java.jenkins.identityresolution.missing-authorization
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              class $R extends User.CanonicalIdResolver {
+                ...
+              }
+          - pattern-inside: |
+              class $R extends CanonicalIdResolver {
+                ...
+              }
+      - pattern: |
+          public String resolveCanonicalId(...) { ... }
+      - pattern-not: |
+          public String resolveCanonicalId(...) {
+            ...
+            $PERM.checkPermission($ARGS);
+            ...
+          }
+      - pattern-not: |
+          public String resolveCanonicalId(...) {
+            ...
+            $PERM.hasPermission($ARGS);
+            ...
+          }
+    message: |
+      Detected a User.CanonicalIdResolver subclass whose resolveCanonicalId
+      implementation performs no permission check (no checkPermission /
+      hasPermission / ACL guard). CanonicalIdResolver is a global extension
+      point consulted by User.get(...) whenever a user ID or full name is
+      resolved, including during authentication flows and SCM committer
+      mapping. If the mapping is derived from self-service, unverified data
+      (e.g. a user-editable property that claims arbitrary identifiers), an
+      attacker can register another user's identifier and hijack every
+      name->user resolution for that identifier: commit attribution is
+      spoofed, notifications/approvals are redirected, and login-time
+      resolution can bind a legitimate user's session to the attacker's
+      account. Resolvers must verify that the identity being claimed is
+      owned by the caller (or require administrative approval) before
+      returning a canonical ID.
+    metadata:
+      category: security
+      cwe: "CWE-290: Authentication Bypass by Spoofing"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
