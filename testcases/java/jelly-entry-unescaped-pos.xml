@@ -1,0 +1,20 @@
+<!-- positive repro: raw-HTML rendering of a custom description method while escaping is disabled -->
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+  <j:set var="escapeEntryTitleAndDescription" value="false"/>
+
+  <j:if test="${it.isUserAdmin()}">
+    <f:entry title="${h.escape(it.name)}" description="${it.adminFormattedDescription()}">
+      <div name="parameter">
+        <input type="hidden" name="name" value="${it.name}"/>
+        <f:textbox name="value" value="${it.defaultValue4Build}"/>
+      </div>
+    </f:entry>
+  </j:if>
+
+  <j:if test="${it.isOnlyHidden() and !it.isUserAdmin()}">
+    <f:entry description="${it.adminFormattedDescription()}">
+      <f:checkbox title="${it.name}" name="value"/>
+    </f:entry>
+  </j:if>
+</j:jelly>

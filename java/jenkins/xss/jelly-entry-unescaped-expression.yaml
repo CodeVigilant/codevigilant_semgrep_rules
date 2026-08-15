@@ -1,0 +1,37 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.jelly-entry-unescaped-expression
+    message: >-
+      A Jelly form entry (f:entry/f:block) binds a ${...} expression to its
+      title/description while the view disables escaping via
+      `escapeEntryTitleAndDescription=false`. The expression is neither wrapped
+      in h.escape(...) nor the MarkupFormatter-sanitized
+      formattedDescription/getFormattedDescription getter, so any
+      configuration- or user-controlled content reaching the attribute is
+      emitted as raw HTML in the Jenkins UI (stored XSS, CWE-79). Escape the
+      value with h.escape(...) or render only the markup-formatter output.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - "*.jelly"
+        - "*.xml"
+    patterns:
+      - pattern-inside: |
+          <j:set var="escapeEntryTitleAndDescription" value="false"/>
+          ...
+      - pattern-regex: >-
+          (?is)<f:(?:entry|block)[^>]*\b(?:title|description)="\$\{(?!h\.escape\()(?![^"}]*getFormattedDescription\(\))(?![^"}]*\.formattedDescription\s*\})[^"]*"
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - jelly
+      confidence: MEDIUM
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+        - https://www.jenkins.io/doc/developer/security/
+      source: ai-anant
+      license: MIT
