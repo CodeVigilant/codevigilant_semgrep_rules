@@ -1,0 +1,44 @@
+rules:
+  - id: codevigilant.java.jenkins.overflow.unbounded-limit-multiplication
+    patterns:
+      - pattern: long $LIMIT = $A * $B;
+      - metavariable-regex:
+          metavariable: $LIMIT
+          regex: '(?i).*\b(memory|disk|limit|threshold|quota|capacity|space|budget|cap)\b.*'
+      - metavariable-pattern:
+          metavariable: $A
+          patterns:
+            - pattern-either:
+                - pattern: $X.$M(...)
+                - pattern: $X.$FIELD
+      - metavariable-pattern:
+          metavariable: $B
+          patterns:
+            - pattern-either:
+                - pattern: $X.$M(...)
+                - pattern: $X.$FIELD
+      - pattern-not: |
+          long $LIMIT = Math.multiplyExact($A, $B);
+    message: |
+      A long resource limit ($LIMIT) is computed by multiplying two runtime
+      operands ($A * $B) and is later compared (typically with '<') against a
+      live capacity/threshold value to gate a permission, load or quota
+      decision. Because neither operand is a constant, the product can overflow
+      into the negative range (CWE-190). Once negative, '<' comparisons on the
+      limit are always false, so the enforced resource cap is silently
+      bypassed. Bound-check and clamp each operand, or compute the product with
+      Math.multiplyExact / Math.addExact to trap overflow, before using it in an
+      authorization or capacity guard.
+    metadata:
+      category: security
+      cwe: "CWE-190: Integer Overflow or Wraparound"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Integer_overflow
+        - https://docs.oracle.com/javase/8/docs/api/java/lang/Math.html#multiplyExact(long,long)
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
