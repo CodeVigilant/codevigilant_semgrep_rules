@@ -1,0 +1,36 @@
+rules:
+  - id: codevigilant.java.jenkins.view.raw-unescaped-output
+    mode: search
+    severity: HIGH
+    message: >-
+      A Stapler/Groovy view template calls raw(...) on a non-literal argument.
+      raw() writes its argument to the HTTP response verbatim without any
+      HTML/XML escaping, so when the value is derived from external or
+      SCM/changelog data (commit messages, identifiers, browser links or any
+      model getter) an attacker who controls that data can inject arbitrary
+      markup/scripting that executes in the Jenkins UI (stored XSS, CWE-79).
+      Only render trusted constant string literals through raw(); escape any
+      user/SCM-derived value (e.g. hudson.Util.xmlEscape(...)) or emit it via
+      an escaping builder such as text(...). If a model value is deliberately
+      trusted-and-constant, mark it explicitly and keep it out of raw().
+    languages:
+      - generic
+    patterns:
+      - pattern: raw(...)
+      - pattern-not: raw("...")
+    metadata:
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation (XSS)"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - groovy
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+        - https://www.jenkins.io/doc/book/managing/script-console/
+      source:
+        - private static rule
+      license: MIT
