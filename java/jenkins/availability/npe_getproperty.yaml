@@ -1,0 +1,45 @@
+rules:
+  - id: codevigilant.java.jenkins.availability.getproperty-npe-deref
+    message: >
+      A method is invoked on the result of getProperty(...) without first
+      checking the returned value for null. In Jenkins, getProperty(Class)
+      returns null when the owning object does not carry the requested
+      property (e.g. an optional project/agent property that is not
+      configured). Dereferencing the null result raises a NullPointerException
+      inside scheduling/callback code (such as a JobRestriction.canTake path),
+      which can interrupt build to node matching and break the build queue.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-476: NULL Pointer Dereference"
+      owasp:
+        - "A06:2021 - Vulnerable and Outdated Components"
+      technology:
+        - jenkins
+      confidence: HIGH
+      references:
+        - https://javadoc.jenkins.io/hudson/model/Job.html#getProperty(java.lang.Class)
+      source:
+        rule: codevigilant.java.jenkins.availability.getproperty-npe-deref
+        license: MIT
+    severity: ERROR
+    languages:
+      - java
+    patterns:
+      - pattern-inside: |
+          $RET $M(...) {
+            ...
+            $T $V = ($CAST) $OBJ.getProperty($CLS);
+            ...
+            $V.$F(...);
+            ...
+          }
+      - pattern: $V.$F(...)
+      - pattern-not-inside: |
+          $T $V = ($CAST) $OBJ.getProperty($CLS);
+          if ($V == null) { ... }
+          $V.$F(...);
+      - pattern-not-inside: |
+          $T $V = ($CAST) $OBJ.getProperty($CLS);
+          if ($V != null) { ... }
+          $V.$F(...);
