@@ -1,0 +1,27 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.js-template-literal-concat
+    mode: search
+    languages: [java]
+    severity: MEDIUM
+    message: |
+      A non-literal value is concatenated into a JavaScript template-literal
+      (backtick-delimited \`...\`) string that is later embedded in a <script>
+      block of HTML output. If that value originates from user/config/SCM/
+      request-controlled data, an embedded backtick or \${...} sequence breaks
+      out of the template literal and executes arbitrary JavaScript, yielding a
+      stored/DOM XSS (CWE-79). Escape the value for the target JS context
+      (e.g. encode backtick as \u0060 and \u0024{ for ${), or better load the
+      data via <script type="application/json"> instead of inlining it into a
+      template literal.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/79.html
+        - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals
+      source: independent security review
+      license: MIT
+    pattern-regex: '"[^"]*`"\s*\+\s*[A-Za-z_][A-Za-z0-9_.]*(\([^)]*\))?\s*\+\s*"`[^"]*'

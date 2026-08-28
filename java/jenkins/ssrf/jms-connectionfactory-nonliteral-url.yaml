@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.connectionfactory.nonliteral-url
+    mode: search
+    languages: [java]
+    severity: HIGH
+    message: |
+      A messaging connection factory (e.g. `JmsConnectionFactory`) is
+      constructed with a non-literal broker URL that flows from request,
+      config, or external input into an outbound network connection. If the
+      value is attacker-influenced, the server can be coerced into opening a
+      connection to an arbitrary host/port (SSRF, CWE-918), enabling internal
+      network probing and, in message-consumer designs, injection of
+      attacker-controlled frames. Resolve the broker address from trusted,
+      admin-only configuration and validate it against an allowlist of schemes
+      and permitted hosts before use; do not place request-derived values
+      directly into the connection factory.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/918.html
+        - https://jakarta.ee/specifications/messaging/
+      source: independent security review
+      license: MIT
+    patterns:
+      - pattern: new $FACTORY($URL);
+      - metavariable-regex:
+          metavariable: $FACTORY
+          regex: '.*(JmsConnectionFactory|ConnectionFactory|ActiveMQConnectionFactory|QpidJmsConnectionFactory|AMQPConnectionFactory).*'
+      - metavariable-regex:
+          metavariable: $URL
+          regex: '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$'
