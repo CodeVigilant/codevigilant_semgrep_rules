@@ -1,0 +1,51 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.chart-generator-unescaped-format
+    message: >-
+      A chart image-map tooltip/URL generator (CategoryToolTipGenerator /
+      CategoryURLGenerator, rendered by JFreeChart / hudson.util.Graph) passes a
+      non-literal, dataset-derived value (a row/build display name resolved via
+      getColumnKey / getValue / getDisplayName) into String.format() or string
+      concatenation WITHOUT HTML-escaping. The formatted string is emitted into an
+      HTML image map (<map><area title=... href=...>) that Stapler injects into the
+      served Jenkins page. A crafted display name containing quotes or markup
+      breaks out of the attribute and yields stored XSS (CWE-79). Escape the value
+      (e.g. StringEscapeUtils.escapeHtml) before embedding it in the map.
+    severity: WARNING
+    languages: [java, kotlin]
+    mode: taint
+    pattern-sources:
+      - pattern: $DS.getColumnKey($I)
+      - pattern: $DS.getRowKey($S)
+      - pattern: $OBJ.getDisplayName()
+      - pattern: $OBJ.toString()
+    pattern-sinks:
+      - pattern-either:
+          - pattern: $OBJ.format($FMT0, $FMT1, ...)
+          - pattern: $OBJ.format($FMT0, $FMT1)
+          - pattern: format($FMT0, $FMT1, ...)
+          - pattern: format($FMT0, $FMT1)
+          - pattern: $S1 + $S2
+    pattern-not:
+      - pattern-either:
+          - pattern: $OBJ.format($FMT0, $FMT1, escapeHtml(...))
+          - pattern: $OBJ.format($FMT0, escapeHtml(...))
+          - pattern: format($FMT0, $FMT1, escapeHtml(...))
+          - pattern: format($FMT0, escapeHtml(...))
+          - pattern: $S1 + escapeHtml(...)
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: escapeHtml($X)
+          - pattern: EscapeUtils.escapeHtml($X)
+          - pattern: StringEscapeUtils.escapeHtml($X)
+          - pattern: escaper.escapeHtml($X)
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+        - https://owasp.org/www-community/attacks/xss/
+      source: semgrep-rule-gap
+      license: MIT
