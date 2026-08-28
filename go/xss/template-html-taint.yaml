@@ -1,0 +1,33 @@
+rules:
+  - id: codevigilant.go.xss.template-html.taint
+    languages:
+      - go
+    severity: HIGH
+    message: >-
+      Argument passed to html/template.(HTML) conversion is not a string
+      constant. template.HTML(...) bypasses Go's automatic HTML escaping, so
+      any data reaching the rendered page through this value that originates
+      from user-controlled or file-derived input is emitted verbatim and can
+      lead to stored/reflected Cross-Site Scripting (CWE-79). Only wrap a
+      compile-time literal (a constant) with template.HTML; for dynamic data
+      keep it a plain string so html/template escapes it, or pass through an
+      allowlist-based sanitizer.
+    cwe: CWE-79
+    owasp:
+      - A03:2021 - Injection
+    technology:
+      - go
+      - html/template
+    confidence: MEDIUM
+    references:
+      - https://pkg.go.dev/html/template
+      - https://owasp.org/www-community/attacks/xss/
+    source: https://github.com/ai-anant/bug_hunting
+    license: MIT
+    patterns:
+      - pattern: template.HTML($X)
+      - pattern-not: template.HTML("...")          # constant literal is safe
+    metadata:
+      category: security
+      pattern-type: taint
+      source: bug-hunting
