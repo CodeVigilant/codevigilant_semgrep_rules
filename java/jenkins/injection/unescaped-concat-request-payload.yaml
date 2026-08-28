@@ -1,0 +1,76 @@
+rules:
+  # ============================================================================
+  # UNESCAPED CONCATENATED REQUEST PAYLOAD (JSON / command-content injection)
+  # Generic vulnerable shape in Java/Jenkins code:
+  #   a request/execution parameters string (JSON or command content) is built by
+  #   string concatenation with non-literal (config-/user-/macro-derived) values
+  #   and handed to an API sink like setParameters/setJson/setCommandContent.
+  #   When the operand is not a compile-time literal, a value containing `"`,
+  #   `\`, or shell/JSON metacharacters breaks out of the intended string and
+  #   injects/corrupts the surrounding payload.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.injection.json-payload-unescaped-concat
+    message: >-
+      A request/execution parameters value is constructed by string concatenation
+      that includes at least one non-literal operand and is passed to an API
+      parameters/JSON/content sink (e.g. setParameters/setJson/setCommandContent).
+      If that non-literal value is attacker-/config-/macro-controlled and is not
+      JSON- or command-escaped, it can break out of the surrounding string literal
+      and inject extra keys or alter the payload (JSON/command/parameter
+      injection). Serialize the payload with a proper JSON library and validate
+      values, or escape them, instead of raw '+' concatenation.
+    severity: ERROR
+    languages: [java]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern: $A + $B
+          - metavariable-pattern:
+              metavariable: $A
+              patterns:
+                - pattern-not: '"..."'
+      - patterns:
+          - pattern: $A + $B
+          - metavariable-pattern:
+              metavariable: $B
+              patterns:
+                - pattern-not: '"..."'
+      - patterns:
+          - pattern: $A + $B + ...
+          - metavariable-pattern:
+              metavariable: $A
+              patterns:
+                - pattern-not: '"..."'
+      - patterns:
+          - pattern: $A + $B + ...
+          - metavariable-pattern:
+              metavariable: $B
+              patterns:
+                - pattern-not: '"..."'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $OBJ.setParameters(...)
+              - pattern: $OBJ.setJson(...)
+              - pattern: $OBJ.setCommandContent(...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: JSON.toJSONString(...)
+              - pattern: JSONObject(...)
+              - pattern: StringEscapeUtils.escapeJson(...)
+              - pattern: URLEncoder.encode(...)
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology:
+        - java
+        - jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-project-top-ten/2017/A1_2017-Injection
+        - https://cwe.mitre.org/data/definitions/94.html
+      source: ai-anant
+      license: MIT

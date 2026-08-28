@@ -1,0 +1,44 @@
+rules:
+  # ============================================================================
+  # JENKINS getItem(...) WITHOUT EXPLICIT PERMISSION ARGUMENT
+  # Generic vulnerable shape in Java/Jenkins code:
+  #   a project/item is resolved from Jenkins by name via the getItem(itemName,
+  #   context, type) overload that does NOT carry an explicit ACL Permission.
+  #   Resolution-based access control is then implicitly the caller's
+  #   responsibility; if the caller forgets a separate checkPermission(Item.READ)
+  #   (or does not pass the 4-arg permission form), a user can be handed an item
+  #   they may not be allowed to READ, and any subsequent rendering of that
+  #   item's data (builds, change logs, config) becomes a cross-project
+  #   information disclosure.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.acl.getItem-missing-permission
+    message: >-
+      Jenkins item resolution via getItem(itemName, context, type) uses the
+      overload that does not enforce an explicit ACL Permission argument. If the
+      calling code does not separately check Item.READ (or use the 4-arg
+      getItem(..., permission) form) before reading/rendering the returned
+      item's data, the user can obtain and display data of a project they are
+      not authorized to read - a cross-project/cross-folder information
+      disclosure. Resolve items with an explicit permission argument, e.g.
+      Jenkins.get().getItem(name, context, SomeItem.class, Jenkins.READ), and
+      ensure every read of the resolved item is permission-guarded.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: jenkins.model.Jenkins.getInstance().getItem($ITEM, $CTX, $TYPE)
+          - pattern: jenkins.model.Jenkins.get().getItem($ITEM, $CTX, $TYPE)
+          - pattern: $UTIL.getInstance().getItem($ITEM, $CTX, $TYPE)
+          - pattern: $INST.getItem($ITEM, $CTX, $TYPE)
+      - pattern-not: $INST.getItem($ITEM, $CTX, $TYPE, $PERM)
+      - metavariable-pattern:
+          metavariable: $TYPE
+          patterns:
+            - pattern: $X.class
+      - metavariable-regex:
+          metavariable: $CTX
+          regex: .*
+      - metavariable-regex:
+          metavariable: $ITEM
+          regex: .*

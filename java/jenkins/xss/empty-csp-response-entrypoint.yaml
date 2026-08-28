@@ -1,0 +1,32 @@
+rules:
+  # ============================================================================
+  # SERVED ACTIVE DOCUMENT WITH EMPTY / ABSENT CONTENT-SECURITY-POLICY
+  # Generic vulnerable shape in Java/Jenkins server code:
+  #   an HTTP/Stapler response that serves an active document (HTML/JS/SVG)
+  #   from attacker-influenced report/artifact content sets the
+  #   Content-Security-Policy (or equivalent sandbox) response header to an
+  #   empty string (or omits it entirely) on the document's entry point.
+  #   With no CSP the served content executes with full origin privileges, so
+  #   any script embedded in the served data becomes stored XSS at the
+  #   application origin when a privileged user views it.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.xss.empty-csp-response-entrypoint
+    message: >-
+      A content-security-policy response header is assigned an empty string
+      (or omitted) while serving an active HTML/JS/SVG document that can
+      embed attacker-influenced data. With no effective CSP the served page
+      runs script with full application-origin privileges, turning any data
+      reflected into that page into stored XSS. Serve entry-point documents
+      behind a strict sandbox/script-src CSP (or an isolated origin), never
+      an empty policy.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $RESPONSE.setHeader("Content-Security-Policy", "")
+          - pattern: $RESPONSE.setHeader($HEADER, "")
+          - pattern: $RESPONSE.setContentSecurityPolicy("")
+      - metavariable-regex:
+          metavariable: $HEADER
+          regex: (?i).*content-security.*
