@@ -1,0 +1,42 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.dohandler.build-permission-persist-config
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $OBJ.save();
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: ^do[A-Z]
+      - pattern: $X.checkPermission(Item.BUILD);
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $OBJ.checkPermission(Item.CONFIGURE);
+            ...
+          }
+    message: |
+      Detected a Stapler 'do*' handler that persists configuration (calls
+      save()) while guarding the action with only `checkPermission(Item.BUILD)`
+      and without an `Item.CONFIGURE` check. In Jenkins, `Item.BUILD` grants the
+      right to start builds, but deliberately NOT the right to modify a job's
+      persisted configuration (`job.save()`). A handler that writes configuration
+      must check `Item.CONFIGURE` (or a broader permission such as ADMINISTER);
+      otherwise a build-only user can persistently mutate job configuration,
+      crossing the BUILD/CONFIGURE privilege boundary.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/book/managing/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH

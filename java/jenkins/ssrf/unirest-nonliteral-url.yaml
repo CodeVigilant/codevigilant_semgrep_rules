@@ -1,0 +1,36 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.unirest.nonliteral-url
+    patterns:
+      - pattern: |
+          Unirest.$METHOD($URL)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: ^(get|post|put|patch|delete|head|options|request)$
+      - pattern-not: |
+          Unirest.$METHOD("...")
+    message: |
+      A Kong Unirest HTTP request (`Unirest.$METHOD`) is issued to a URL that is
+      not a string literal but is produced by a variable or an arbitrary
+      expression. When that URL is assembled from an attacker-controllable or
+      configurable value (job configuration, request parameters, plugin/settings
+      fields) and no allowlist restricts the scheme/host to trusted endpoints, an
+      authenticated user can point the request at internal network services (e.g.
+      127.0.0.1, 169.254.169.254 cloud metadata, other Jenkins nodes) or at a host
+      under the attacker's control to exfiltrate data/credentials attached to the
+      request (such as an Authorization/basic-auth header). Prefer building the
+      request against a fixed, allowlisted base URL, or validate the resolved host
+      against a trusted allowlist before issuing the call.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_(SSRF)/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
