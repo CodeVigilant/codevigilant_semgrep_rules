@@ -1,0 +1,35 @@
+rules:
+  # ============================================================================
+  # DISABLE TLS/SSL CERTIFICATE VALIDATION ON AN OUTBOUND HTTP CLIENT
+  # Generic shape: a client TLS-config setter forces certificate validation off
+  # (.setIgnoreSSLCerts(true) / setVerifyHostname(false) / setTrustAll(...)).
+  # With validation disabled an on-path attacker can present any certificate
+  # and decrypt/forge the traffic, exfiltrating any credentials/API keys sent
+  # over the connection.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.ssl.disable-cert-validation
+    message: >-
+      TLS/SSL certificate validation is being disabled on an outbound HTTP
+      client (e.g. setIgnoreSSLCerts(true)/setVerifyHostname(false)/setTrustAll).
+      This leaves the client open to man-in-the-middle attacks: an on-path
+      attacker can impersonate the endpoint and intercept or forge requests,
+      including any credentials or API keys transmitted over that connection.
+      Keep certificate validation enabled and pin the expected certificate.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $CLIENT.setIgnoreSSLCerts(true)
+          - pattern: $CLIENT.setVerifyHostname(false)
+          - pattern: $CLIENT.setTrustAll(...)
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://cwe.mitre.org/data/definitions/295.html
+      source: semgrep-rule-gap
+      license: MIT
