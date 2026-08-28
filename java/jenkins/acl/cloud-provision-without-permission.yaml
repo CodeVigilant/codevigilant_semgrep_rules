@@ -1,0 +1,57 @@
+rules:
+  # ============================================================================
+  # JENKINS PIPELINE STEP: CLOUD AGENT PROVISIONING WITHOUT PERMISSION (CWE-862)
+  # Generic vulnerable shape in Java/Jenkins code:
+  #   a Jenkins pipeline Step / StepExecution (or a plain helper) registers or
+  #   launches a cloud agent / task template (e.g. addDynamicTemplate,
+  #   registerTemplate, cloud.provision(...), launchAgent...) directly from
+  #   pipeline-controlled configuration WITHOUT first enforcing an ACL
+  #   permission (checkPermission / hasPermission / Jenkins.get().
+  #   checkPermission(...)) in the same method. Because no explicit permission
+  #   is checked, any user able to run that pipeline (or supply the
+  #   configuration) can provision additional agents/containers on the
+  #   configured cloud and inherit the cloud's IAM identity, privileged
+  #   container settings, and mounted credentials.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.acl.cloud-provision-without-permission
+    message: >-
+      A pipeline Step / StepExecution registers, provisions or launches a cloud
+      agent/task (operation '$PROVISION') without an explicit authorization
+      check (checkPermission/hasPermission) in the enclosing method. This lets a
+      user who can run the pipeline provision agents/containers on the cloud
+      and inherit its IAM identity and privileged settings (CWE-862 - Missing
+      Authorization). Guard the operation with the appropriate ACL permission
+      (e.g. Jenkins.get().checkPermission(Jenkins.ADMINISTER) or the cloud's
+      permission) before provisioning.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      cwe: "CWE-862"
+      owasp: "A01:2021 - Broken Access Control"
+      technology:
+        - java
+        - jenkins
+      category: security
+      confidence: MEDIUM
+      references:
+        - "https://www.jenkins.io/doc/developer/security/"
+      source: "com.cloudbees.jenkins.plugins.amazonecs"
+      license: MIT
+    patterns:
+      - pattern: $REC.$PROVISION(...)
+      - metavariable-regex:
+          metavariable: $PROVISION
+          regex: addDynamicTemplate|add[A-Z]?Template|registerTemplate|provision
+      # Exclude methods that already enforce an ACL permission guard.
+      - pattern-not-inside: |
+          $ANY.checkPermission($PERM);
+          ...
+      - pattern-not-inside: |
+          $ANY.hasPermission($PERM);
+          ...
+      - pattern-not-inside: |
+          Jenkins.get().checkPermission($PERM);
+          ...
+      - pattern-not-inside: |
+          if ($ANY.hasPermission($PERM)) { ... }
