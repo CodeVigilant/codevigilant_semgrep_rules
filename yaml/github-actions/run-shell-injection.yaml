@@ -1,0 +1,44 @@
+rules:
+  - id: codevigilant.yaml.github-actions.run-shell-injection.expression
+    languages:
+      - yaml
+    severity: ERROR
+    message: >-
+      A GitHub Actions run/script step interpolates a GitHub context expression
+      (${{ github.<context> ... }}) directly into a shell command. Values such
+      as github.ref_name, github.event.*, github.head_ref etc. can contain
+      arbitrary characters (e.g. a tag or branch name with shell
+      metacharacters) introduced by anyone who can control that ref/event; if
+      the expression is unquoted or inside a larger command template, this is
+      arbitrary command injection (CWE-78) that executes on the runner. Pass
+      untrusted context through a allowlist/whitelist, sanitize it, or avoid
+      embedding it in run: steps.
+    cwe: CWE-78
+    owasp:
+      - A03:2021 - Injection
+    technology:
+      - github-actions
+      - yaml
+    confidence: HIGH
+    references:
+      - https://securitylab.github.com/research/github-actions-untrusted-input/
+    source: https://github.com/ai-anant/bug_hunting
+    license: MIT
+    paths:
+      include:
+        - "*.yml"
+        - "*.yaml"
+    patterns:
+      - pattern: |
+          $KEY:
+            $BODY
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (run|script)
+      - metavariable-regex:
+          metavariable: $BODY
+          regex: (?s).*\$\{\{.*github\.[a-zA-Z_][a-zA-Z0-9_.]*.*\}\}.*
+    metadata:
+      category: security
+      pattern-type: direct
+      source: bug-hunting
