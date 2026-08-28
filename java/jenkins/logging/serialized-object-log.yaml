@@ -1,0 +1,37 @@
+rules:
+  # ============================================================================
+  # JSON-SERIALIZED OBJECT PASSED DIRECTLY TO A LOGGER
+  # Generic shape: a logger call receives an object converted to JSON via
+  # JSON.toJSON(...) / JSON.toJSONString(...). Serializing a bean instance (as
+  # opposed to an explicit safe string) can render every getter — including
+  # secret accessors (credentials, tokens, parent credential objects) — into the
+  # log output at rest, where it may be read by non-privileged operators or
+  # shipped to log-collection/aggregation systems.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.logging.serialized-object-log
+    message: >-
+      A logger call directly receives an object serialized via JSON.toJSON or
+      JSON.toJSONString. Serializing a bean exercises all of its getters and can
+      write sensitive fields (credentials, tokens, parent credential objects)
+      in plaintext into the log, where they may be exposed to non-privileged
+      readers or log-collection systems. Log only explicitly sanitized fields
+      instead of serializing the whole object.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $LOG.$LEVEL($FMT, JSON.toJSON($OBJ))
+          - pattern: $LOG.$LEVEL($FMT, JSON.toJSONString($OBJ))
+          - pattern: $LOG.$LEVEL(JSON.toJSON($OBJ))
+          - pattern: $LOG.$LEVEL(JSON.toJSONString($OBJ))
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/532.html
+      source: semgrep-rule-gap
+      license: MIT
