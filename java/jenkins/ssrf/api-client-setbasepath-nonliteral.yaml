@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.api-client-setbasepath-nonliteral
+    languages: [java]
+    mode: search
+    severity: HIGH
+    patterns:
+      - pattern: |
+          $CLIENT.setBasePath($URL)
+      - pattern-not: |
+          $CLIENT.setBasePath("...")
+    message: |
+      An HTTP client base URL is assigned from a non-literal expression
+      (`setBasePath($URL)`). When `$URL` is a plug-in configuration field or an
+      otherwise configurable value (job/folder/global setting, request
+      parameter, environment-derived string) and no scheme/host allowlist is
+      enforced before the assignment, an authenticated user who can edit that
+      configuration can point the outbound client at an internal service
+      (127.0.0.1, router/cloud-metadata like 169.254.169.254, other Jenkins
+      nodes) or at a host they control. Requests built on this base URL routinely
+      carry credentials (Authorization headers, API keys, service-account
+      tokens), so the same flaw can exfiltrate stored credentials to the chosen
+      endpoint. Validate and allowlist the resolved scheme + host (reject
+      loopback/link-local/cloud-metadata ranges, restrict to https:) before
+      building the client, instead of accepting an arbitrary string.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_(SSRF)/
+      source: independent security review
+      license: MIT
