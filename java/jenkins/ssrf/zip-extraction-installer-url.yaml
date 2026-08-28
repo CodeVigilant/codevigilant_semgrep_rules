@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.zip-extraction-installer-url
+    patterns:
+      - pattern: new ZipExtractionInstaller($INSTALLER, $URL, $PARAMS)
+      - metavariable-pattern:
+          metavariable: $URL
+          patterns:
+            - pattern-not-regex: '"[^"$]*"'        # not a literal string constant
+    message: |
+      Detected a Jenkins ZipExtractionInstaller constructed with a non-literal
+      download URL. ZipExtractionInstaller opens an outbound HTTP connection to
+      the given URL and downloads+extracts the archive on the node where the
+      tool installation runs. In Jenkins plugins the URL frequently originates
+      from a remote metadata/download service response, job configuration or
+      build parameters expanded at runtime. An attacker who can influence the
+      resolved value can make a build agent fetch arbitrary internal or external
+      URLs (server-side request forgery / arbitrary download) and, with archive
+      extraction, write attacker-controlled files onto the agent (potentially
+      leading to code execution). When the URL is not fully trusted, validate
+      its scheme (https-only) and host against an allow-list, add timeouts, and
+      verify the archive checksum and per-entry paths before extraction.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/#server-side-request-forgery-ssrf
+        - https://www.jenkins.io/doc/developer/tutorial/improve/initialize/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
