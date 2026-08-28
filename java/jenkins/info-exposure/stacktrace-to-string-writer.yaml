@@ -1,0 +1,44 @@
+rules:
+  - id: codevigilant.java.jenkins.info-exposure.stacktrace-to-string-writer
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $E.printStackTrace(new PrintWriter($W));
+              ...
+              $X = $W.toString();
+          - pattern: |
+              $E.printStackTrace(new PrintWriter($W));
+              ...
+              return $W.toString();
+      - metavariable-pattern:
+          metavariable: $W
+          patterns:
+            - pattern-not: System.err
+            - pattern-not: System.out
+      - pattern-not: |
+          $E.printStackTrace(new PrintWriter($W));
+          ...
+          LOGGER.$M($W);
+    message: |
+      A Throwable's stack trace is written into an in-memory java.io.Writer
+      (e.g. StringWriter) and that Writer's string form is then returned or
+      stored (CWE-209: Generation of Error Message Containing Sensitive
+      Information). The captured trace typically embeds internal class names,
+      filesystem paths and configuration details, and when the string is
+      rendered into an HTTP/UI response it leaks that information to users who
+      may be less privileged. Only convert a stack trace to a string when it is
+      destined for a server-side log with a controlled audience, or sanitize /
+      truncate it and monitor who can view the endpoint.
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/209.html
+        - https://owasp.org/www-community/vulnerabilities/Information_exposure_through_error_messages
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: WARNING
