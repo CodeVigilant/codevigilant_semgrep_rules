@@ -1,0 +1,45 @@
+rules:
+  - id: codevigilant.java.jenkins.command-injection.processbuilder-macro-expanded-argument
+    patterns:
+      - pattern-inside: |
+          ProcessBuilder $PB = new ProcessBuilder();
+          ...
+      - pattern-either:
+          - pattern: $PB.add($MACRO);
+          - pattern: $PB.command($MACRO);
+      - metavariable-pattern:
+          metavariable: $MACRO
+          patterns:
+            - pattern-either:
+                - pattern: $ENV.expand(...)
+                - pattern: Util.replaceMacro($A, $B)
+                - pattern: $X.getOverride(...)
+                - pattern: $X.getValue($OVERRIDES)
+    message: |
+      A java.lang.ProcessBuilder command (or one of its appended arguments) is
+      built from a value produced by environment/macro expansion or an
+      override-map lookup (e.g. env.expand(...), hudson.Util.replaceMacro(...),
+      a getOverride(...)/getValue(overrides) resolver, or a Map.get on an
+      override map). If that embedded value can be influenced by a less
+      privileged build parameter or by the host environment, the resulting
+      extra command-line arguments/flags are attacker controlled — argument
+      injection (CWE-88), escalating to command injection (CWE-78) wherever a
+      shell later interprets the assembled String. Because such option verbs
+      (e.g. --token=..., --namespace=..., kubectl impersonation --as=...) are
+      appended verbatim to the argv, a crafted parameter can override flags the
+      program sets or impersonate a privileged identity. Validate/allow-list the
+      value and append it only as a positional non-option argument — never
+      concatenate untrusted values into option-prefixed argv.
+    metadata:
+      category: security
+      cwe: "CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/88.html
+        - https://cwe.mitre.org/data/definitions/78.html
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
