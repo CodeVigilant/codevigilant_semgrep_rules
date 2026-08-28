@@ -1,0 +1,42 @@
+rules:
+  # ============================================================================
+  # SSH SERVER HOST KEY VERIFIER THAT ALWAYS ACCEPTS (HOST IDENTITY DISABLED)
+  # Generic shape: a ServerHostKeyVerifier implementation whose verifyServerHostKey
+  # method unconditionally returns true (the boolean literal true, not tied to
+  # inspecting the key or comparing against a known_hosts pin).
+  # With host identity never validated an on-path attacker can impersonate the
+  # SSH/SFTP peer, hijack the session, and harvest any credential (e.g. a private
+  # key or password) the client exchanges — enabling full MITM takeover of the
+  # connection and remote command injection into whatever the channel runs.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.ssl.ssh-serverhostkeyverifier-accept-all
+    message: >-
+      SSH server host-key verification is effectively disabled: a
+      ServerHostKeyVerifier whose verifyServerHostKey(...) returns true without
+      inspecting the presented key. The client accepts any server identity, so an
+      on-path attacker can impersonate the SSH/SFTP peer and intercept or forge the
+      session, including any credentials (private keys, passwords) sent over it.
+      Validate the host key against a pinned/expected identity before returning true.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern: |
+          class $V implements ServerHostKeyVerifier {
+            ...
+            public boolean verifyServerHostKey(...) {
+              return true;
+            }
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/295.html
+        - https://cwe.mitre.org/data/definitions/322.html
+      source: semgrep-rule-gap
+      license: MIT
