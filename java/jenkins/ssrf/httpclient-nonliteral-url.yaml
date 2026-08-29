@@ -1,0 +1,40 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.httpclient-nonliteral-url
+    patterns:
+      - pattern-either:
+          - pattern: new HttpGet($URL)
+          - pattern: new HttpPost($URL)
+          - pattern: new HttpPut($URL)
+          - pattern: new HttpHead($URL)
+          - pattern: new HttpDelete($URL)
+          - pattern: new HttpPatch($URL)
+          - pattern: new HttpOptions($URL)
+      - pattern-not: new HttpGet("...")
+      - pattern-not: new HttpPost("...")
+      - pattern-not: new HttpPut("...")
+      - pattern-not: new HttpHead("...")
+      - pattern-not: new HttpDelete("...")
+      - pattern-not: new HttpPatch("...")
+      - pattern-not: new HttpOptions("...")
+    message: |
+      Detected an Apache HttpClient request (HttpGet/Post/Put/Head/Delete/Patch/
+      Options) created from a non-literal URL. When the URL is derived from job
+      configuration, environment variables or other user-influenced input, the
+      Jenkins controller can be made to send requests to internal services
+      (SSRF) and to disclose request headers/credentials attached to the
+      request to an attacker-chosen host. Validate the URL at the point of use:
+      restrict the scheme to http/https and check the host against an
+      allow-list; do not rely on UI-only form validation.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
