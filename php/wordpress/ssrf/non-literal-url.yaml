@@ -1,0 +1,51 @@
+rules:
+  # ============================================================================
+  # Remote URL fetch with a non-literal URL — POTENTIAL SSRF (no host allowlist)
+  # Covers wp_remote_get()/wp_remote_post()/wp_remote_request() and
+  # download_url() (which wraps wp_remote_get()).
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  - id: codevigilant.php.wordpress.ssrf.any.wp_remote.non_literal_url
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: wp_remote_get($URL, ...)
+          - pattern: wp_remote_post($URL, ...)
+          - pattern: wp_remote_request($URL, ...)
+          - pattern: download_url($URL)
+          - pattern: download_url($URL, ...)
+      - metavariable-regex:
+          metavariable: $URL
+          # Exclude hard-coded string literals (single or double quoted)
+          regex: ^(?!['"])
+      - pattern-not: wp_remote_get(wp_http_validate_url(...), ...)
+      - pattern-not: wp_remote_post(wp_http_validate_url(...), ...)
+      - pattern-not: wp_remote_request(wp_http_validate_url(...), ...)
+      - pattern-not: download_url(wp_http_validate_url(...))
+      - pattern-not: download_url(wp_http_validate_url(...), ...)
+    message: |
+      Detected a potential Server-Side Request Forgery (SSRF) vector: a
+      non-literal URL is passed to wp_remote_get()/wp_remote_post()/
+      wp_remote_request() or download_url() without wp_http_validate_url() or
+      an explicit host allowlist. download_url() performs an unauthenticated
+      server-side GET via wp_remote_get() (not the safe variant), and
+      wp_remote_*() follows redirects, so a value influenced by third-party or
+      request data can make the server fetch internal hosts (e.g. 127.0.0.1,
+      RFC1918 ranges, cloud metadata 169.254.169.254). esc_url()/esc_url_raw()/
+      sanitize_url() are NOT sufficient — they keep private IPs. Validate the
+      resolved host against an explicit allowlist before issuing the request.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: LOW
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_remote_get/
+        - https://developer.wordpress.org/reference/functions/download_url/
+        - https://developer.wordpress.org/reference/functions/wp_http_validate_url/
+        - https://developer.wordpress.org/apis/security/data-validation/
+      source: CodeVigilant
+      license: MIT
