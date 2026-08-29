@@ -1,0 +1,50 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.executor-interrupt-without-permission
+    patterns:
+      - pattern-inside: |
+          $RET $M(...) {
+            ...
+          }
+      - pattern: $EXEC.interrupt($RESULT);
+      - pattern-not-inside: |
+          $RET $M(...) {
+            ...
+            if (!$OBJ.hasPermission($PERM)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          $RET $M(...) {
+            ...
+            if ($OBJ.hasPermission($PERM)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not-inside: |
+          $RET $M(...) {
+            ...
+            $OBJ.checkPermission($PERM);
+            ...
+          }
+    message: |
+      Detected Executor.interrupt() invoked in a method that performs no ACL
+      permission check. Interrupting an executor aborts the running build,
+      which can leave artifacts and post-build steps in an inconsistent state.
+      In Jenkins this must be guarded by a permission check on the affected
+      build's project (e.g. Item.CANCEL / Item.BUILD); otherwise any code path
+      reaching the method can deny service on arbitrary jobs.
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
