@@ -1,0 +1,72 @@
+rules:
+  - id: codevigilant.java.jenkins.ssl.accept-all-trustmanager
+    patterns:
+      - pattern-inside: |
+          class $TM implements X509TrustManager {
+            ...
+          }
+      - pattern-either:
+          - pattern: |
+              public void checkServerTrusted(X509Certificate[] $C, String $A) {
+              }
+          - pattern: |
+              public void checkServerTrusted(X509Certificate[] $C, String $A) throws $E {
+              }
+    message: |
+      Detected an X509TrustManager implementation whose checkServerTrusted
+      method has an empty body. Such a trust manager accepts every certificate,
+      enabling man-in-the-middle attacks against any TLS connection that uses
+      it (credentials transmitted over the connection can be intercepted).
+      Use a real KeyStore/TrustManagerFactory-based trust manager instead.
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.java.jenkins.ssl.insecure-trust-manager
+    message: >-
+      An anonymous X509TrustManager is instantiated inside a TrustManager[]
+      array (typically passed to SSLContext.init(...)) whose
+      checkServerTrusted/checkClientTrusted implementations do not delegate to
+      a real TrustManagerFactory. Such a trust manager accepts any server
+      certificate, disabling certificate validation and enabling
+      man-in-the-middle attacks against every connection built with this
+      context (credentials and secrets can be intercepted). Build the trust
+      manager from a KeyStore/TrustManagerFactory instead, or validate the
+      certificate chain explicitly.
+    severity: HIGH
+    languages: [java]
+    patterns:
+      - pattern: |
+          new TrustManager[] { new X509TrustManager() { ... } }
+      - pattern-not: |
+          new TrustManager[] { new X509TrustManager() {
+            ...
+            public void checkServerTrusted(X509Certificate[] $CERTS, String $AUTH) {
+              $MANAGER.checkServerTrusted($CERTS, $AUTH);
+            }
+            ...
+          } }
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology:
+        - jenkins
+        - java
+        - ssl
+      confidence: MEDIUM
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Transport_Layer_Protection_Cheat_Sheet.html
+        - https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html
+      source: ai-anant
+      license: MIT
