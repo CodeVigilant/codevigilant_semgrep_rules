@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.javascript.redos.ambiguous-quantified-regex
+    mode: search
+    severity: HIGH
+    message: >-
+      A hardcoded regular-expression literal carries multiple unbounded
+      quantifiers (e.g. `[^...]*`, `\w+`, `.+?`) or a numeric backreference over
+      an unbounded span. When several quantified atoms can match the same input
+      text, the engine re-tries a combinatorially growing set of partitions on
+      near-miss input, so runtime grows non-linearly with input length
+      (catastrophic backtracking / ReDoS, CWE-1333). Running such a regex over
+      large, application- or attacker-influenced strings stalls the calling
+      thread — and in a browser-extension content script, an entire tab.
+      Prefer linear-time patterns (a single quantified atom, no backreference
+      over an unbounded span), bound the input size, and run detection off the
+      UI/main thread under a time budget.
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: $X
+      - metavariable-regex:
+          metavariable: $X
+          regex: '^/[^\n\r]*(\\[1-9]|((\\[a-zA-Z]|\[[^\\]]*\]|\.|\w)\s*[*+?][^\n\r]*(\\[a-zA-Z]|\[[^\\]]*\]|\.|\w)\s*[*+?]))[^\n\r]*/[dgimsuvy]{0,8}$'
+    metadata:
+      cwe:
+        - "CWE-1333: Inefficient Regular Expression Complexity"
+        - "CWE-400: Uncontrolled Resource Consumption"
+      owasp:
+        - "A04:2021 - Insecure Design"
+      technology:
+        - javascript
+        - typescript
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+        - https://swtch.com/~rsc/regexp/regexp1.html
+      source:
+        - private static rule
+      license: MIT
