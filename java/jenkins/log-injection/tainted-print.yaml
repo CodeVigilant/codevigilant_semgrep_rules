@@ -1,0 +1,42 @@
+rules:
+  - id: codevigilant.java.jenkins.log-injection.tainted-print
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $E.getMsg()
+              - pattern: $E.getAuthor()
+      - pattern: EntityUtils.toString(...)
+    pattern-sinks:
+      - pattern: $L.println($V)
+      - pattern: $L.print($V)
+      - pattern: $L.error($V)
+    pattern-sanitizers:
+      - pattern: $X.replaceAll(...)
+      - pattern: $X.replace(...)
+    message: |
+      Detected an attacker-influenced value (an SCM commit message/author via
+      getMsg()/getAuthor(), or an HTTP response body via EntityUtils.toString)
+      flowing into a build-log printing sink (PrintStream.println/print or
+      BuildListener.error) without sanitization. Commit messages/authors are
+      crafted by anyone who can push to the source repository; response bodies
+      are attacker-influenced when the remote endpoint is untrusted,
+      compromised, or reachable over plaintext http (MITM). Printed verbatim,
+      embedded ANSI/terminal escape sequences are interpreted when the log is
+      rendered in a terminal or by log tools, enabling console-log forgery
+      (fake build results, hidden output, clipboard/terminal-emulator escape
+      actions). Sanitize the value before printing: strip control characters
+      (e.g. [\\x00-\\x1F\\x7F]) or HTML-encode it before it reaches the log sink.
+    metadata:
+      category: security
+      cwe: "CWE-117: Improper Output Neutralization for Logs"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Log_Injection
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
