@@ -1,0 +1,55 @@
+rules:
+  - id: codevigilant.java.jenkins.info-disclosure.docheck-file-probe
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: ^doCheck[A-Z]
+      - pattern-inside: |
+          $T $F = new File($V);
+          ...
+      - pattern-either:
+          - pattern: $F.exists()
+          - pattern: new File($V).exists()
+          - pattern: $F.canRead()
+          - pattern: $F.canWrite()
+          - pattern: $F.canExecute()
+          - pattern: $F.isFile()
+          - pattern: $F.isDirectory()
+          - pattern: $F.length()
+          - pattern: $F.listFiles()
+      - pattern-not-inside: |
+          public $RET $HANDLER(...) {
+            ...
+            $X.checkPermission($PERM);
+            ...
+          }
+    message: |
+      Detected a Stapler form-validation handler (doCheck*) that probes local
+      file existence/capabilities (exists/canRead/canWrite/canExecute/isFile/
+      isDirectory/length/listFiles) on a path built from handler input
+      ('new File($V)') without an explicit ACL permission check. Descriptor
+      doCheck* methods are routed directly by Stapler and are not protected by
+      any permission by default, so any user who can reach the descriptor URL
+      can use the endpoint as a file-existence/capability oracle for arbitrary
+      paths on the Jenkins controller (CWE-200). Guard the handler with an
+      explicit permission check such as
+      Jenkins.get().checkPermission(Jenkins.ADMINISTER) before touching the
+      filesystem, or remove the probe.
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/developer/forms/validation/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
