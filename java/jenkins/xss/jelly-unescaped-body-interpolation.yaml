@@ -1,0 +1,35 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.jelly-unescaped-body-interpolation
+    mode: search
+    severity: HIGH
+    message: >-
+      A Stapler Jelly view template interpolates a bare model getter expression
+      (${instance.<field>} / ${it.<field>}) directly into an HTML element body.
+      Jelly does not HTML-escape element-body ${...} expressions unless the file
+      declares 'escape-by-default' or the value is routed through an explicit
+      escaping helper (h.xmlEscape / a form control). When the getter returns
+      data derived from external input (remote API values, SCM data, or config
+      fields a token-authenticated HTTP API can write), the markup is emitted
+      raw into the Jenkins UI and executes as stored XSS (CWE-79). Add
+      'escape-by-default=true' to the file and/or wrap the value in an escaping
+      helper before rendering.
+    languages: [generic]
+    patterns:
+      - pattern: '>${$OBJ.$X}<'
+    metadata:
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation (XSS)"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - jelly
+        - stapler
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+        - https://www.jenkins.io/doc/developer/views/jelly-tag-library/
+      source:
+        - private static rule
+      license: MIT

@@ -1,0 +1,10 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:h="jelly:hudson.tools">
+  <!-- value routed through an explicit escaping helper: not a bare getter interpolation -->
+  <div class="tpl"><span class="name">${h.xmlEscape(instance.label)}</span></div>
+  <!-- form-control attribute values handled/escaped by the framework -->
+  <f:entry field="label"><f:textbox value="${instance.label}"/></f:entry>
+  <f:checkbox checked="${instance.isOnline()}"/>
+  <!-- boolean / constant interpolation in attributes is not an output sink -->
+  <div class="${instance.isOnline() ? 'on' : 'off'}">ok</div>
+</j:jelly>
