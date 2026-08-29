@@ -1,0 +1,45 @@
+rules:
+  - id: codevigilant.java.jenkins.environment.unvalidated-output-envvar-put
+    mode: taint
+    severity: HIGH
+    message: >-
+      A key/value pair derived from external or HTTP-response content is written
+      into a process/build environment map without any allow-listing or
+      validation. When the source string is parsed from an attacker-influenced
+      body (job/playbook stdout, an SCM artifact, or an HTTP response body) the
+      split key and value reach `envVars.put(KEY, VALUE)` / a config map, letting
+      an attacker inject or override arbitrary environment variables (PATH,
+      LD_PRELOAD, HOME, LD_LIBRARY_PATH, secrets) that later build steps and
+      subprocesses consume. This can escalate to command injection or privilege
+      escalation (CWE-78). Validate and allow-list the variable names, and
+      sanitize the values before writing them into the environment.
+    languages:
+      - java
+    pattern-sources:
+      - pattern: EntityUtils.toString($ENTITY)
+      - pattern: $J.getString(...)
+      - pattern: $R.getEntity()
+    pattern-sinks:
+      - pattern: $ENV.put($KEY, $VALUE)
+    pattern-sanitizers:
+      - pattern: $X.isEmpty()
+      - pattern: intval(...)
+      - pattern: Long.parseLong(...)
+      - pattern: Integer.parseInt(...)
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command (OS Command Injection)"
+        - "CWE-454: External Control of System or Configuration Settings"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - java
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://en.wikipedia.org/wiki/Environment_variable
+      source:
+        - private static rule
+      license: MIT
