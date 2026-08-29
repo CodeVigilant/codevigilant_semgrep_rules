@@ -1,0 +1,34 @@
+rules:
+  - id: codevigilant.java.jenkins.command-injection.shell-format-literal
+    mode: search
+    severity: HIGH
+    message: >-
+      A Java string literal intended as a shell body contains both a format
+      placeholder (%s/%d) and a shell control operator (;, &&, ||, &>, $(,
+      backtick, or a sh -c / bash -c wrapper). Such literals are typically
+      interpolated with String.format and executed as an OS command by a remote
+      runtime (e.g. a provisioned agent's startup script). Any value occupying
+      a placeholder is inserted into the shell invocably, so a caller who
+      influences an interpolated field can inject arbitrary OS commands
+      (command injection, CWE-78). Build commands as argument arrays
+      (ProcessBuilder) and shell-quote every interpolated value instead of
+      embedding placeholders in a shell body string.
+    languages: [java]
+    patterns:
+      - pattern-regex: '(?s)"[^"]*%[sd][^"]*(;|&&|\|\||&>|\$\(|`)'
+    metadata:
+      cwe:
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command (OS Command Injection)"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - java
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://owasp.org/www-community/attacks/Command_Injection
+        - https://www.jenkins.io/doc/developer/security/
+      source:
+        - private static rule
+      license: MIT
