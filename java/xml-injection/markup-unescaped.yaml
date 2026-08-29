@@ -1,0 +1,76 @@
+rules:
+  - id: codevigilant.java.xml-injection.markup.unsafe-concat
+    patterns:
+      - pattern: $A + $X + $B
+      - metavariable-regex:
+          metavariable: $A
+          regex: '^"<.*>"$'
+      - metavariable-regex:
+          metavariable: $B
+          regex: '^"</.*>"$'
+      - pattern-not: $P1 + "$LIT" + $P2
+      - pattern-not: $P1 + $Y.replace(...) + $P2
+      - pattern-not: $P1 + $Y.replaceAll(...) + $P2
+      - pattern-not: $P1 + $Y.replaceFirst(...) + $P2
+    message: |
+      Detected an XML/HTML markup fragment built by string concatenation of a
+      non-literal value between markup tags (e.g. "<tag>" + value + "</tag>").
+      If the concatenated value is derived from user-controlled or
+      build-controlled data (request parameters, SCM commit metadata, build
+      display names, configuration values) and is not XML-escaped, the value is
+      interpreted as markup by downstream XML consumers (TwiML/voice
+      processors, HTML renderers, config parsers), enabling markup/verb
+      injection (CWE-74) or stored XSS (CWE-79). Escape the value with an XML
+      encoding function before embedding, or build the document with a proper
+      XML API (DOM/StAX) that escapes automatically.
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output Used by a Downstream Component ('Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: java
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
+
+  - id: codevigilant.java.xml-injection.markup.unsafe-replace
+    patterns:
+      - pattern: $S.replace($PH, $X)
+      - metavariable-regex:
+          metavariable: $PH
+          regex: '^"\{[a-zA-Z0-9_]+\}"$'
+      - pattern-not: $S.replace($PH, $ESC($ARG))
+      - pattern-not: $S.replace($PH, $E.escapeXml10($ARG))
+      - pattern-not: $S.replace($PH, $E.escapeXml11($ARG))
+      - pattern-not: $S.replace($PH, $E.escapeHtml4($ARG))
+      - pattern-not: $S.replace($PH, $ARG.replaceAll(...))
+      - pattern-not: $S.replace($PH, $ARG.replace(...))
+    message: |
+      Detected a template string mutated with String.replace() where a
+      '{placeholder}' token is substituted with a value that is not passed
+      through an escaping function. When the template is an XML/HTML markup
+      document and the substituted value is user-influenced (request
+      parameters, build parameters, job configuration, SCM data), the value is
+      interpreted as markup by the downstream XML consumer, enabling markup
+      injection (CWE-74) — e.g. injecting elements/attributes that change the
+      meaning of the document (request forgery, quality-gate bypass). Escape
+      the value with an XML/HTML encoding function (e.g.
+      StringEscapeUtils.escapeXml10) before substitution, or build the
+      document with a proper XML API (DOM/StAX) that escapes automatically.
+    metadata:
+      category: security
+      cwe: "CWE-74: Improper Neutralization of Special Elements in Output Used by a Downstream Component ('Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: java
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
