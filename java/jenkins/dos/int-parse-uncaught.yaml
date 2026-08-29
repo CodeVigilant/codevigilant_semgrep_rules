@@ -1,0 +1,77 @@
+rules:
+  - id: codevigilant.java.jenkins.dos.int-parse-uncaught
+    languages:
+      - java
+    severity: MEDIUM
+    message: >-
+      An integer is parsed from a non-constant string
+      (Integer.parseInt(...) / Long.parseLong(...) / Integer.valueOf(...) /
+      new Integer(...)) and the NumberFormatException that a malformed or
+      oversized argument can throw is not guarded by a try/catch handler. When
+      the source string is derived from an external, streamed or stored input
+      (request parameter, log/console line, file contents, environment value),
+      a crafted value (for example an over-long numeric literal that overflows
+      the int/long range) raises an uncaught runtime exception that aborts the
+      enclosing request or worker thread. Validate and bound the input length
+      and character set before parsing, or wrap the parse in a try/catch that
+      swallows NumberFormatException and falls back to a default, so that
+      externally-influenced strings cannot crash processing.
+    metadata:
+      cwe:
+        - "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+        - "CWE-20: Improper Input Validation"
+      owasp:
+        - "A05:2021 - Security Misconfiguration"
+      technology:
+        - jenkins
+        - java
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/NumberFormatException.html
+        - https://wiki.sei.cmu.edu/confluence/display/java/ERR00-J.+Do+not+suppress+or+ignore+checked+exceptions
+      source:
+        - unguarded numeric parse of a non-literal string
+      license: MIT
+    patterns:
+      - pattern-either:
+          - pattern: Integer.parseInt($STR)
+          - pattern: Long.parseLong($STR)
+          - pattern: Integer.valueOf($STR)
+          - pattern: Long.valueOf($STR)
+          - pattern: new Integer($STR)
+          - pattern: new Long($STR)
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (NumberFormatException $E) {
+            ...
+          }
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (IllegalArgumentException $E) {
+            ...
+          }
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (RuntimeException $E) {
+            ...
+          }
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (Exception $E) {
+            ...
+          }
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (Throwable $E) {
+            ...
+          }
+      - metavariable-pattern:
+          metavariable: $STR
+          patterns:
+            - pattern-not: "\"$LIT\""
