@@ -1,0 +1,38 @@
+rules:
+  - id: codevigilant.java.jenkins.markup-formatter.raw-output
+    mode: search
+    severity: HIGH
+    message: >-
+      A custom hudson.markup.MarkupFormatter.translate(String markup, Writer
+      output) implementation writes its input string to the Writer output
+      without passing it through any HTML escaping or sanitization. Jenkins
+      renders the output of the installed MarkupFormatter for user-controlled
+      fields (build descriptions, job descriptions, user names/descriptions,
+      notes) on HTML pages. When the input is attacker-controlled and the
+      formatter is installed site-wide, the unescaped output enables stored
+      cross-site scripting (CWE-79), which can escalate to controller/agent
+      code execution via Jenkins' script console. Escape or sanitize the markup
+      (e.g. with an HTML allowlist such as OWASP Java HTML Sanitizer, or an XSS
+      escaping utility) before writing it to the output writer.
+    languages:
+      - java
+    pattern: |
+      void translate(String $MARKUP, Writer $OUTPUT) {
+        ...
+        $OUTPUT.write($MARKUP);
+        ...
+      }
+    metadata:
+      category: security
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - java
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://jenkins.io/redirect/security/xss
+      source: independent security review
+      license: MIT
