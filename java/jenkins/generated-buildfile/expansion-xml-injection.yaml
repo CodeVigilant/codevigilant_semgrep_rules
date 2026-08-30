@@ -1,0 +1,46 @@
+rules:
+  - id: codevigilant.java.jenkins.generated-buildfile.expansion-xml-injection
+    mode: taint
+    severity: HIGH
+    message: >-
+      A value obtained from a build-time variable/macro/parameter expansion
+      (TokenMacro.expandAll, EnvVars.expand, or an environment/parameter getter)
+      is written, unescaped, into a generated build/script file (e.g. via a
+      FilePath write) that the build later interprets as executable markup or a
+      command. Because the expanded value is spliced into the output without
+      XML/escaping, a build parameter or environment value controlled at build
+      trigger time can inject arbitrary elements or commands into the generated
+      artifact, escalating to code/command injection (CWE-94/CWE-77) in the
+      executed build. Escape expansion results before embedding them in the
+      generated file, or build the document with a proper XML API.
+    languages:
+      - java
+    pattern-sources:
+      - pattern: TokenMacro.expandAll($BUILD, $LISTENER, $TEXT)
+      - pattern: $ENV.expand($TEXT)
+      - pattern: $BUILD.getBuildVariables()
+      - pattern: $B.getEnvironment($L)
+    pattern-sinks:
+      - pattern: $FP.write($CONTENT, ...)
+      - pattern: $BUF.append($X)
+    pattern-sanitizers:
+      - pattern: StringEscapeUtils.escapeXml10($X)
+      - pattern: StringEscapeUtils.escapeXml11($X)
+      - pattern: $E.escapeXml10($X)
+      - pattern: $E.escapeXml11($X)
+      - pattern: $X.isEmpty()
+    metadata:
+      category: security
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+        - "CWE-77: Improper Neutralization of Special Elements used in a Command"
+      owasp: "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - java
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/Code_Injection
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
