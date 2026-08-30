@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.java.indexing.unchecked-indexof-substring-bound
+    mode: search
+    severity: MEDIUM
+    message: >-
+      A String.indexOf(...) result is used directly as a bound for String.substring(...)
+      without checking the indexOf result for a negative return. indexOf returns -1
+      when the searched separator is absent, and substring(beginIndex, -1) then throws
+      an uncaught StringIndexOutOfBoundsException. When the searched input is even
+      partially attacker-influenced (console/log lines, request params, headers), this
+      is an uncaught-exception denial-of-service (CWE-248 / CWE-754). Compute indexOf
+      into a variable, verify it is not less than zero, then use it as the bound.
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $S.substring($B, $S.indexOf($SEP));
+          - pattern: |
+              $S.substring($B, $S.indexOf($SEP, $FROM));
+          - pattern: |
+              $S.substring($B, $X.indexOf($SEP));
+          - pattern: |
+              $S.substring($B, $X.indexOf($SEP, $FROM));
+    metadata:
+      cwe:
+        - "CWE-248: Uncaught Exception"
+        - "CWE-754: Improper Check for Unusual or Exceptional Conditions"
+      owasp:
+        - "A05:2021 - Security Misconfiguration"
+      technology:
+        - java
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Denial_of_Service
+        - https://www.jenkins.io/doc/developer/security/
+      source:
+        - private static rule
+      license: MIT
