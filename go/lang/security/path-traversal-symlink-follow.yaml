@@ -1,0 +1,37 @@
+rules:
+  - id: codevigilant.go.lang.security.path-traversal.symlink-follow-through-join
+    languages:
+      - go
+    severity: HIGH
+    message: >-
+      A filesystem path derived from request input and built with filepath.Join(base, rel)
+      is opened with a filesystem API (os.Open/os.ReadFile/os.Stat/http.ServeContent) without
+      canonicalizing the target. A string-prefix containment check (strings.HasPrefix) is not
+      a sufficient boundary check: a symlink inside the served tree pointing outside base, or a
+      sibling path sharing the prefix, lets an attacker read arbitrary files readable by the
+      process (CWE-22/CWE-59). Resolve the path (filepath.EvalSymlinks) and verify it stays
+      within an absolute base (filepath.Rel) before opening.
+    cwe: CWE-22
+    owasp:
+      - A01:2021 - Broken Access Control
+    technology:
+      - go
+    confidence: MEDIUM
+    references:
+      - https://owasp.org/www-community/attacks/Path_Traversal
+    source: https://github.com/ai-anant/bug_hunting
+    license: MIT
+    mode: taint
+    pattern-sources:
+      - pattern: $X.URL.Path
+    pattern-sinks:
+      - pattern-either:
+          - pattern: os.Open($ARG)
+          - pattern: os.ReadFile($ARG)
+          - pattern: os.Stat($ARG)
+    pattern-sanitizers:
+      - pattern: filepath.EvalSymlinks($S)
+    metadata:
+      category: security
+      pattern-type: taint
+      source: bug-hunting
