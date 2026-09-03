@@ -1,0 +1,30 @@
+rules:
+  - id: codevigilant.java.jenkins.rest-api.path-segment-nonliteral
+    patterns:
+      - pattern-either:
+          - pattern: $TARGET.path($SEG)
+          - pattern: $TARGET.path($SEG + $REST)
+      - pattern-not: $TARGET.path("...")
+    message: |
+      Detected a JAX-RS/Jersey WebTarget path segment appended via .path()
+      from a non-literal expression. Unlike query parameters, path segments
+      are not fully encoded by .path() — values containing '/' or '..' change
+      which REST endpoint is requested. When the value derives from an
+      attacker-influenced field (job config, build parameter, request input),
+      the request can be steered to other endpoints of the same service while
+      carrying the stored session token (REST path manipulation, CWE-22).
+      Validate the segment against an allowlist (alphanumerics, '-', '_') or
+      use the service SDK's dedicated ID/path builders before appending.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://docs.oracle.com/javaee/7/api/javax/ws/rs/client/WebTarget.html
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
