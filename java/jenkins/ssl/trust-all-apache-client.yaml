@@ -1,0 +1,36 @@
+rules:
+  - id: codevigilant.java.jenkins.ssl.trust-all-apache-client
+    patterns:
+      - pattern-either:
+          - pattern: new NoopHostnameVerifier()
+          - pattern: |
+              new TrustStrategy() {
+                ...
+                public boolean isTrusted(...) {
+                  return true;
+                }
+              }
+          - pattern: new TrustSelfSignedStrategy()
+          - pattern: SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER
+    message: |
+      Detected an Apache HttpClient TLS configuration that accepts any
+      certificate and/or any hostname (NoopHostnameVerifier, an anonymous
+      TrustStrategy returning true, TrustSelfSignedStrategy, or
+      SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER). This disables
+      certificate validation and hostname verification, enabling man-in-the-middle
+      attacks against any connection built with this client; credentials or API
+      keys sent over the connection can be intercepted. Use the default verifier
+      and a real trust store instead.
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
