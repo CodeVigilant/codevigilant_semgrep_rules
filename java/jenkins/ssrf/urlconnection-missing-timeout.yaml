@@ -1,0 +1,37 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.urlconnection-missing-timeout
+    patterns:
+      - pattern: $CONN = $URL.openConnection();
+      - pattern-not-inside: |
+          $CONN = $URL.openConnection();
+          ...
+          $CONN.setConnectTimeout($T);
+      - pattern-not-inside: |
+          $CONN = $URL.openConnection();
+          ...
+          $CONN.setReadTimeout($T);
+      - pattern-not: |
+          $CONN = new URL("...").openConnection();
+          ...
+    message: |
+      Detected a URLConnection opened from a non-literal URL without a
+      connect/read timeout in the enclosing block. A connection to a host that
+      accepts TCP but never responds (or a URL whose content never terminates,
+      such as a device file) blocks the calling thread indefinitely. On a
+      Jenkins controller this hangs SCM checkout and polling operations,
+      consuming executors/threads (denial of service). Always configure
+      setConnectTimeout() and setReadTimeout() on connections derived from
+      external input.
+    metadata:
+      category: security
+      cwe: "CWE-400: Uncontrolled Resource Consumption"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://owasp.org/www-community/attacks/Denial_of_Service
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: LOW

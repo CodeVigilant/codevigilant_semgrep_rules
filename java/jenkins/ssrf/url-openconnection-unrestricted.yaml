@@ -1,0 +1,34 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.url.openconnection-unrestricted
+    patterns:
+      - pattern: $CONN = $URL.openConnection();
+      - pattern-not-inside: |
+          $CONN = new URL("...").openConnection();
+          ...
+      - pattern-not: |
+          $CONN = new URL("...").openConnection();
+    message: |
+      Detected an outbound network connection opened from a URL that is not a
+      compile-time literal. When the URL is derived from job configuration,
+      build parameters, or other user-influenced input and is passed to
+      URL.openConnection() without restricting the protocol scheme (http/https
+      only) and without validating the target host, the Jenkins controller can
+      be made to connect to arbitrary internal services (SSRF) and, depending
+      on the JVM-supported schemes (file:, jar:, ftp:), to read local files on
+      the controller and copy them elsewhere. Validate the scheme with an
+      allowlist (e.g. URL.getProtocol() must be http or https), reject
+      loopback/link-local/private targets unless explicitly intended, and add
+      connect/read timeouts before opening the connection.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
