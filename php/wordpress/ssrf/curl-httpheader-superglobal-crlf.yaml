@@ -1,0 +1,74 @@
+rules:
+  # ============================================================================
+  # ATTACKER-CONTROLLED REQUEST HEADERS EMBEDDED IN OUTBOUND HTTP HEADERS
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags code that copies values of spoofable request headers
+  # (Client-IP / X-Forwarded-For / CF-Connecting-IP / X-Sucuri-ClientIP) into
+  # header strings that are sent to a remote server via cURL
+  # (CURLOPT_HTTPHEADER) or the WP HTTP API.
+  #
+  # Those $_SERVER['HTTP_*'] values are fully attacker-controlled. If the
+  # value contains CR/LF bytes (where the fronting web server or proxy does
+  # not strip them) the embedded value can terminate the header line and
+  # inject arbitrary additional headers into the outbound request
+  # (CWE-93 / HTTP request smuggling). Even without CRLF, the attacker can
+  # forge headers the remote service trusts for identity/geo decisions
+  # (e.g. X-Forwarded-For spoofing). Validate the value with
+  # FILTER_VALIDATE_IP / sanitize_text_field() and strip CR/LF before
+  # placing it in any outbound header.
+  #
+  # CWE-93: Improper Neutralization of CRLF Sequences ('CRLF Injection')
+
+  - id: codevigilant.php.wordpress.ssrf.curl_httpheader.superglobal_crlf_injection
+    severity: ERROR
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: $ARR[] = $STR . $_SERVER['HTTP_CLIENT_IP'];
+          - pattern: $ARR[] = $_SERVER['HTTP_CLIENT_IP'];
+          - pattern: $ARR[] = $STR . $_SERVER['HTTP_X_FORWARDED_FOR'];
+          - pattern: $ARR[] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+          - pattern: $ARR[] = $STR . $_SERVER['HTTP_CF_CONNECTING_IP'];
+          - pattern: $ARR[] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+          - pattern: $ARR[] = $STR . $_SERVER['HTTP_X_SUCURI_CLIENTIP'];
+          - pattern: $ARR[] = $_SERVER['HTTP_X_SUCURI_CLIENTIP'];
+      # Sanitized variants: value validated before being embedded
+      - pattern-not: $ARR[] = $STR . filter_var($_SERVER['HTTP_CLIENT_IP'], $ARGS);
+      - pattern-not: $ARR[] = $STR . filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], $ARGS);
+      - pattern-not: $ARR[] = $STR . filter_var($_SERVER['HTTP_CF_CONNECTING_IP'], $ARGS);
+      - pattern-not: $ARR[] = $STR . filter_var($_SERVER['HTTP_X_SUCURI_CLIENTIP'], $ARGS);
+      - pattern-not: $ARR[] = $STR . sanitize_text_field($_SERVER['HTTP_CLIENT_IP']);
+      - pattern-not: $ARR[] = $STR . sanitize_text_field($_SERVER['HTTP_X_FORWARDED_FOR']);
+      - pattern-not: $ARR[] = $STR . sanitize_text_field($_SERVER['HTTP_CF_CONNECTING_IP']);
+      - pattern-not: $ARR[] = $STR . sanitize_text_field($_SERVER['HTTP_X_SUCURI_CLIENTIP']);
+      - pattern-not: $ARR[] = $STR . preg_replace($RE, $SUB, $_SERVER['HTTP_CLIENT_IP']);
+      - pattern-not: $ARR[] = $STR . preg_replace($RE, $SUB, $_SERVER['HTTP_X_FORWARDED_FOR']);
+      - pattern-not: $ARR[] = $STR . preg_replace($RE, $SUB, $_SERVER['HTTP_CF_CONNECTING_IP']);
+      - pattern-not: $ARR[] = $STR . preg_replace($RE, $SUB, $_SERVER['HTTP_X_SUCURI_CLIENTIP']);
+    message: |
+      An attacker-controlled request header value ($_SERVER['HTTP_CLIENT_IP'],
+      HTTP_X_FORWARDED_FOR, HTTP_CF_CONNECTING_IP, HTTP_X_SUCURI_CLIENTIP) is
+      embedded into a string that is sent as an HTTP header to a remote
+      server (e.g. via CURLOPT_HTTPHEADER or the WP HTTP API). Clients can
+      set these headers arbitrarily, so CR/LF characters in the value can
+      terminate the header line and inject additional headers into the
+      outbound request (CWE-93 CRLF injection / request smuggling), and even
+      without CRLF the value lets callers forge headers the remote service
+      may trust (e.g. spoofed X-Forwarded-For). Validate the value
+      (FILTER_VALIDATE_IP / sanitize_text_field) and strip CR/LF before
+      embedding it in any outbound header.
+    metadata:
+      category: security
+      cwe: "CWE-93: Improper Neutralization of CRLF Sequences ('CRLF Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/attacks/HTTP_Request_Smuggling
+        - https://developer.wordpress.org/reference/functions/sanitize_text_field/
+        - https://www.php.net/manual/en/function.filter-var.php
+      source: CodeVigilant
+      license: MIT

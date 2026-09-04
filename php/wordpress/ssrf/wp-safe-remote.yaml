@@ -1,0 +1,63 @@
+rules:
+  # ============================================================================
+  # wp_safe_remote_*() CALLED WITH AN UNVALIDATED URL (CWE-918)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags wp_safe_remote_get()/wp_safe_remote_post()/wp_safe_remote_request()
+  # calls whose URL argument is a variable that is not first passed through
+  # a URL validation function (wp_http_validate_url(), esc_url(),
+  # esc_url_raw()). While wp_safe_remote_* blocks some internal hosts, the
+  # protection has known gaps (dual-stack IPv6 hosts, DNS rebinding, mixed
+  # record sets), and URLs derived from imported files, plugin settings,
+  # or stored data can still reach internal services. Validate the URL with
+  # wp_http_validate_url() and restrict schemes/hosts before requesting.
+
+  - id: codevigilant.php.wordpress.ssrf.file.wp_safe_remote.unvalidated
+    message: >-
+      wp_safe_remote_*() is called with a URL argument that is not visibly
+      validated by wp_http_validate_url(), esc_url(), or esc_url_raw().
+      URLs derived from imported files, settings, or stored data can be
+      attacker-controlled; the wp_safe_remote_* internal-host checks have
+      known bypasses (IPv6 dual-stack, DNS rebinding). Validate the URL
+      with wp_http_validate_url() and restrict schemes/hosts before use.
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          - pattern: wp_safe_remote_get($URL, ...)
+          - pattern: wp_safe_remote_post($URL, ...)
+          - pattern: wp_safe_remote_request($URL, ...)
+      - pattern-not: wp_safe_remote_get(esc_url(...), ...)
+      - pattern-not: wp_safe_remote_get(esc_url_raw(...), ...)
+      - pattern-not: wp_safe_remote_get(wp_http_validate_url(...), ...)
+      - pattern-not: wp_safe_remote_post(esc_url(...), ...)
+      - pattern-not: wp_safe_remote_post(esc_url_raw(...), ...)
+      - pattern-not: wp_safe_remote_post(wp_http_validate_url(...), ...)
+      - pattern-not: wp_safe_remote_request(esc_url(...), ...)
+      - pattern-not: wp_safe_remote_request(esc_url_raw(...), ...)
+      - pattern-not: wp_safe_remote_request(wp_http_validate_url(...), ...)
+      - pattern-not-inside: |
+          $URL = wp_http_validate_url( ... );
+          ...
+          wp_safe_remote_get($URL, ...);
+      - pattern-not-inside: |
+          $URL = wp_http_validate_url( ... );
+          ...
+          wp_safe_remote_post($URL, ...);
+      - pattern-not-inside: |
+          $URL = wp_http_validate_url( ... );
+          ...
+          wp_safe_remote_request($URL, ...);
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/wp_safe_remote_get/
+      source: Generic (CodeVigilant)
+      license: MIT

@@ -1,0 +1,81 @@
+rules:
+  # ============================================================================
+  # SSRF: URL READ FROM A PARSED DOCUMENT (XML/DOM/JSON) REACHES
+  # wp_remote_*() OR download_url()
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Taint rule: flags outbound HTTP requests whose URL originates from a
+  # value parsed out of a document (XMLReader/DOM textContent, SimpleXML
+  # object properties, json_decode() results) rather than from a trusted
+  # literal. Importers, sitemap/feed fetchers and sync tools that recurse
+  # into fetched documents hand the document author control over server-side
+  # requests: internal IPs (127.0.0.0/8, RFC1918), cloud metadata
+  # (169.254.169.254) and intranet services become reachable, and with
+  # download_url() the response body is written to a local temp file that
+  # may then be moved into web-accessible storage - a data-exfil SSRF
+  # (CWE-918). Validate every fetched URL with wp_http_validate_url() and
+  # constrain the resolved host to an explicit allowlist before requesting.
+
+  - id: codevigilant.php.wordpress.ssrf.parsed-doc-url.remote-download.taint
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $NODE->textContent
+              - pattern: (string) $ELEMENT->PROP
+              - pattern: (string) $ELEMENT->loc
+              - pattern: $ELEMENT->PROP
+              - pattern: json_decode($INPUT, ...)
+              - pattern: simplexml_load_string($INPUT)
+              - pattern: simplexml_load_file($INPUT)
+              - pattern: DOMDocument::loadXML(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_remote_get($URL)
+              - pattern: wp_remote_get($URL, ...)
+              - pattern: wp_remote_post($URL)
+              - pattern: wp_remote_post($URL, ...)
+              - pattern: wp_remote_request($URL)
+              - pattern: wp_remote_request($URL, ...)
+              - pattern: wp_remote_head($URL)
+              - pattern: wp_remote_head($URL, ...)
+              - pattern: download_url($URL)
+              - pattern: download_url($URL, ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_http_validate_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: home_url(...)
+              - pattern: site_url(...)
+              - pattern: network_home_url(...)
+              - pattern: network_site_url(...)
+              - pattern: add_query_arg(...)
+              - pattern: set_url_scheme(...)
+              - pattern: trailingslashit(...)
+    message: |
+      A URL read from a parsed document (XML/DOM node text, SimpleXML
+      property, or JSON-decoded value) reaches an outbound HTTP request
+      (wp_remote_* or download_url) without being constrained to a trusted
+      origin. Whoever controls the document content (import file, sitemap,
+      feed) can make the server fetch arbitrary internal URLs - SSRF to
+      localhost, cloud metadata and intranet services, with download_url()
+      also persisting the response body to a web-reachable location
+      (CWE-918). Validate the URL with wp_http_validate_url() and enforce an
+      explicit host allowlist before requesting it.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_http_validate_url/
+        - https://developer.wordpress.org/reference/functions/download_url/
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+      source: CodeVigilant
+      license: MIT
