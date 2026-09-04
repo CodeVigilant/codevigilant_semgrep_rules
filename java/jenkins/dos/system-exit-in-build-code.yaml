@@ -1,0 +1,34 @@
+rules:
+  - id: codevigilant.java.jenkins.dos.system-exit-in-build-code
+    message: >-
+      Detected a call to System.exit() inside a build/plugin execution path.
+      In a long-running server process (Jenkins controller or agent JVM) this
+      terminates the ENTIRE JVM instead of failing the current operation,
+      taking down the node and every concurrent build/job running in it
+      (CWE-248/674, DoS). Build steps must fail via thrown exceptions
+      (e.g. AbortException), never by terminating the process.
+    languages: [java]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-248: Uncaught Exception"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://rules.sonarsource.com/java/type/Bug/RSPEC-1147/
+        - https://spotbugs.readthedocs.io/en/stable/bugDescriptions.html#dm-exit-dm-exit-dm-exit-dm-exit
+      source: independent security review
+      license: MIT
+    patterns:
+      - pattern-either:
+          - pattern: System.exit($ARG);
+          - pattern: System.exit($ARG)
+      - pattern-not-inside: |
+          public static void main(String[] $ARGS) {
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $ARG
+          regex: '[0-9]+'
