@@ -1,0 +1,29 @@
+rules:
+  - id: codevigilant.java.jenkins.command-injection.cmd-exe-addtokenized
+    message: |
+      Detected ArgumentListBuilder.addTokenized(...) used on a command list that
+      also contains cmd.exe. On Windows, Launcher passes the tokens to cmd.exe
+      which re-parses the reconstructed command line, so whitespace-split
+      untrusted input (job parameters, process output, workspace file lines)
+      can inject cmd metacharacters (&, |, &&) as extra commands. Prefer
+      ArgumentListBuilder.add() per argument without a cmd.exe /c wrapper, or
+      reject control characters before tokenizing.
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://javadoc.jenkins.io/hudson/util/ArgumentListBuilder.html#addTokenized(java.lang.String)
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
+    patterns:
+      - pattern-inside: |
+          $B.add("cmd.exe");
+          ...
+      - pattern: $B.addTokenized($ARG)
+      - pattern-not: $B.addTokenized("...")
