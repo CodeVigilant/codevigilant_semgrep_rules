@@ -1,0 +1,28 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.markuptext-addmarkup-nonliteral
+    message: |
+      Detected hudson.MarkupText.addMarkup called with a non-literal start-tag
+      argument. addMarkup inserts the start and end strings as raw HTML around
+      changelog text. When the start tag is built from ticket URLs, issue
+      identifiers, or other untrusted/config-controlled strings without
+      escaping, a quote or angle-bracket in that value breaks out of the
+      attribute/element and yields stored XSS in the Jenkins changelog view.
+      Escape every interpolated value (hudson.Util.escape) or use a safe HTML
+      builder; never concatenate untrusted data into the markup arguments.
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/#cross-site-scripting
+        - https://javadoc.jenkins.io/hudson/MarkupText.html#addMarkup(int,int,java.lang.String,java.lang.String)
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: HIGH
+    patterns:
+      - pattern: $MT.addMarkup($START, $END, $LEFT, $RIGHT)
+      - pattern-not: $MT.addMarkup($START, $END, "...", "...")
+      - pattern-not: $MT.addMarkup($START, $END, "...", $RIGHT)
