@@ -1,0 +1,26 @@
+rules:
+  - id: codevigilant.java.jenkins.path-traversal.filepath-uri-resolve-uncontained
+    message: |
+      Detected FilePath.toURI().resolve(...) used to build a filesystem path.
+      URI.resolve treats a leading slash as an absolute URI path and collapses
+      '..' segments, so a job-configured relative folder can escape the
+      workspace. The resulting path is often passed to java.io.File, which
+      resolves on the Jenkins controller rather than the agent that owns the
+      FilePath. Use FilePath.child with a containment check (or FilePath.act
+      on the remote node) instead of URI.resolve plus new File.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/remoting/
+        - https://docs.oracle.com/javase/8/docs/api/java/net/URI.html#resolve-java.net.URI-
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: ERROR
+    patterns:
+      - pattern: $WS.toURI().resolve($REL)
+      - pattern-not: $WS.toURI().resolve("...")
