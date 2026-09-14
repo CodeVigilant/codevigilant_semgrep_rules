@@ -1,0 +1,53 @@
+rules:
+  - id: codevigilant.java.jenkins.file-operation.file.delete-nonliteral-path
+    patterns:
+      - pattern-either:
+          - pattern: (new File($PATH)).delete()
+          - pattern: |
+              File $F = new File($PATH);
+              ...
+              $F.delete();
+          - pattern: |
+              $T $F = new File($PATH);
+              ...
+              $F.delete();
+          - pattern: |
+              File $F = new File($PATH);
+              ...
+              $F.deleteDir();
+          - pattern: |
+              $T $F = new File($PATH);
+              ...
+              $F.deleteDir();
+      - pattern-not: (new File("...")).delete()
+      - pattern-not: |
+          File $F = new File("...");
+          ...
+          $F.delete();
+      - pattern-not: |
+          $T $F = new File("...");
+          ...
+          $F.delete();
+    message: >-
+      A java.io.File is constructed from a non-literal path and then deleted
+      (File.delete / Groovy deleteDir). In Jenkins plugins those paths often
+      come from job configuration or EnvVars.expand of build parameters, so
+      a user who can influence the string can delete arbitrary files or
+      recursively delete directories on the controller as the Jenkins
+      service user (CWE-22/CWE-73). Resolve the path, require it to stay
+      under an intended base directory, and prefer FilePath with a
+      containment check over controller-side java.io.File.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/22.html
+        - https://www.jenkins.io/doc/developer/security/
+      source: semgrep-rule-gap
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: ERROR
