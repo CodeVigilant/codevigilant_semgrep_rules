@@ -1,0 +1,28 @@
+rules:
+  - id: codevigilant.java.jenkins.classloader.path-to-urlclassloader
+    message: |
+      Detected a URLClassLoader constructed from a URL list. Jenkins Builder
+      and SimpleBuildStep perform() run on the controller JVM, so loading
+      JARs discovered from a job-configured filesystem path this way is
+      controller-side arbitrary code execution. Load only plugin-bundled
+      classes, or run the automation on the agent via FilePath.act; never
+      wrap the loader in AccessController.doPrivileged.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/developer/security/remoting/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: new URLClassLoader(...)
+          - pattern: new URLClassLoader(..., ...)
+      - pattern-not: new URLClassLoader(new URL[]{})
+      - pattern-not: new URLClassLoader(new URL[0])
