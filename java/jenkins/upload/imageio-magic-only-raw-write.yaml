@@ -1,0 +1,42 @@
+rules:
+  - id: codevigilant.java.jenkins.upload.imageio-magic-only.raw-write
+    message: |
+      Detected ImageIO.getImageReaders without a subsequent imageReader.read
+      in the same method. getImageReaders only matches format magic; it does
+      not decode the image or cap dimensions. Use the reader to decode
+      (imageReader.read(0)) or ImageIO.read, allow-list PNG/JPEG/GIF, and
+      persist a re-encoded BufferedImage rather than the original bytes.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://docs.oracle.com/en/java/javase/21/docs/api/java.desktop/javax/imageio/ImageIO.html
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: ImageIO.getImageReaders(...)
+          - pattern: javax.imageio.ImageIO.getImageReaders(...)
+      - pattern-not-inside: |
+          $RET $M(...) {
+            ...
+            ImageIO.getImageReaders(...);
+            ...
+            $R.read(...);
+            ...
+          }
+      - pattern-not-inside: |
+          $RET $M(...) {
+            ...
+            ImageIO.getImageReaders(...);
+            ...
+            ImageIO.read(...);
+            ...
+          }
