@@ -1,0 +1,26 @@
+rules:
+  - id: codevigilant.java.jenkins.info-exposure.controller-getenv-to-launcher
+    message: |
+      Detected System.getenv() cloned into a new HashMap. Plugin perform()
+      and other descriptor code run on the Jenkins controller JVM, so copying
+      the process environment and later passing it to Launcher/ProcStarter.envs
+      (or a remote callable) ships controller secrets (cloud keys, CI tokens,
+      agent secrets) to the agent-side child. Build a fresh env map that
+      contains only the variables the tool needs; do not clone System.getenv().
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/remoting/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: new HashMap<>(System.getenv())
+          - pattern: new HashMap<String, String>(System.getenv())
+      - pattern-not: new HashMap<>(Collections.emptyMap())
