@@ -1,0 +1,44 @@
+rules:
+  # ============================================================================
+  # SHORTCODE EXECUTION RULES
+  # Original rules by Code Vigilant.
+  #
+  # Limitation: this is an intraprocedural (search-mode) rule. It flags request
+  # data passed straight into the sink. Taint flows through an intermediate
+  # assignment (e.g. `$c = $_POST['x']; do_shortcode($c);`) are not covered.
+  # ============================================================================
+
+  - id: codevigilant.php.coding-standards.injection.do_shortcode_user_input
+    mode: search
+    message: >-
+      do_shortcode() is called on request-derived data. Shortcode attributes
+      and inner content then come from the attacker, so a user-supplied string
+      is turned into executed shortcode callbacks (arbitrary shortcode
+      execution, attribute injection, and often privilege escalation or stored
+      XSS through the rendered output). Never pass request data to
+      do_shortcode(); pass a literal shortcode string instead.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern: do_shortcode($ARG)
+      - metavariable-pattern:
+          metavariable: $ARG
+          patterns:
+            - pattern-either:
+                - pattern: $_GET[...]
+                - pattern: $_POST[...]
+                - pattern: $_REQUEST[...]
+                - pattern: $_COOKIE[...]
+                - pattern: get_query_var(...)
+                - pattern: filter_input(...)
+                - pattern: $REQ->get_param(...)
+                - pattern: $REQ->get(...)
+    metadata:
+      category: security
+      cwe: "CWE-94"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/do_shortcode/
+        - https://developer.wordpress.org/apis/security/

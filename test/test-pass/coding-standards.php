@@ -107,3 +107,41 @@ function safe_include() {
 function safe_no_phpinfo() {
     $info = php_uname();
 }
+
+// ---------------------------------------------------------------------------
+// Safe authentication comparison — strict operators and hash_equals()
+// ---------------------------------------------------------------------------
+
+function safe_strict_token_comparison() {
+    if ($_GET['token'] === get_option('my_token')) {
+        wp_set_auth_cookie(get_current_user_id());
+    }
+}
+
+function safe_hash_equals_comparison($password, $stored_hash) {
+    if (hash_equals($stored_hash, md5($password))) {
+        wp_set_auth_cookie(get_current_user_id());
+    }
+}
+
+function safe_numeric_comparison() {
+    if ($count == 5) {
+        return true;
+    }
+
+    return $total != 10;
+}
+
+// ---------------------------------------------------------------------------
+// Safe shortcode usage — literal shortcode string only
+// ---------------------------------------------------------------------------
+
+function safe_shortcode_literal() {
+    return do_shortcode('[my_shortcode attr="value"]');
+}
+
+function safe_shortcode_static_variable() {
+    $content = '<p>Static content</p>';
+
+    return do_shortcode($content);
+}

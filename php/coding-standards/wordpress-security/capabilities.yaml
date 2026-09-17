@@ -55,3 +55,94 @@ rules:
         - https://developer.wordpress.org/reference/functions/current_user_can/
       source: WordPress-Coding-Standards
       license: MIT
+
+  # Limitation: the secret operand must be name-identifiable (a variable whose
+  # name contains token/secret/key/hash/pass/..., a hash call, or a standard
+  # WordPress option/meta getter). Secrets returned by custom getters with
+  # opaque names are not covered.
+  - id: codevigilant.php.coding-standards.auth.loose_comparison_secret
+    mode: search
+    message: >-
+      Authentication value compared using a loose operator (== / !=) or a
+      non-strict hash comparison. PHP type juggling can make two different
+      strings compare equal (e.g. "0e123..." == "0e456...", or a numeric-prefix
+      coercion), letting an attacker bypass a token, key, nonce or password-hash
+      check. Compare secrets with hash_equals() (timing-safe and strict) and
+      every other check with === / !==.
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          # (A) request-derived input compared loosely against a secret-ish var
+          - patterns:
+              - pattern-either:
+                  - pattern: $SECRET == $INPUT
+                  - pattern: $INPUT == $SECRET
+                  - pattern: $SECRET != $INPUT
+                  - pattern: $INPUT != $SECRET
+              - metavariable-regex:
+                  metavariable: $SECRET
+                  regex: (?i)\$\{?[a-zA-Z0-9_]*?(token|secret|apikey|api_key|key|hash|pass|pwd|sig|nonce|hmac|otp|digest|checksum)
+              - metavariable-pattern:
+                  metavariable: $INPUT
+                  patterns:
+                    - pattern-either:
+                        - pattern: $_GET[...]
+                        - pattern: $_POST[...]
+                        - pattern: $_REQUEST[...]
+                        - pattern: $_COOKIE[...]
+                        - pattern: $_SERVER[...]
+                        - pattern: get_query_var(...)
+                        - pattern: filter_input(...)
+                        - pattern: $REQ->get_param(...)
+                        - pattern: $REQ->get(...)
+                        - pattern: $REQ->get_header(...)
+          # (B) request input loosely compared to a store-backed secret
+          #     (e.g. $_GET['token'] == get_option('api_key'))
+          - patterns:
+              - pattern-either:
+                  - pattern: $INPUT == $GETTER
+                  - pattern: $GETTER == $INPUT
+                  - pattern: $INPUT != $GETTER
+                  - pattern: $GETTER != $INPUT
+              - metavariable-pattern:
+                  metavariable: $INPUT
+                  patterns:
+                    - pattern-either:
+                        - pattern: $_GET[...]
+                        - pattern: $_POST[...]
+                        - pattern: $_REQUEST[...]
+                        - pattern: $_COOKIE[...]
+                        - pattern: $_SERVER[...]
+                        - pattern: get_query_var(...)
+                        - pattern: filter_input(...)
+                        - pattern: $REQ->get_param(...)
+                        - pattern: $REQ->get(...)
+                        - pattern: $REQ->get_header(...)
+              - metavariable-regex:
+                  metavariable: $GETTER
+                  regex: (?i)(get_option|get_site_option|get_user_option|get_user_meta|get_post_meta|get_transient|get_network_option)\(
+          # (C) a hash digest compared loosely (md5/sha1/hash/crypt == ...)
+          - patterns:
+              - pattern-either:
+                  - pattern: $HASH == $OTHER
+                  - pattern: $HASH != $OTHER
+              - metavariable-pattern:
+                  metavariable: $HASH
+                  patterns:
+                    - pattern-either:
+                        - pattern: md5(...)
+                        - pattern: sha1(...)
+                        - pattern: hash(...)
+                        - pattern: crypt(...)
+                        - pattern: wp_hash(...)
+                        - pattern: wp_hash_password(...)
+    metadata:
+      category: security
+      cwe: "CWE-697"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/language.operators.comparison.php
+        - https://www.php.net/manual/en/function.hash-equals.php

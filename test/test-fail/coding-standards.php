@@ -19,6 +19,8 @@
 // codevigilant.php.coding-standards.info_disclosure.var_dump
 // codevigilant.php.coding-standards.lfi.dynamic_include
 // codevigilant.php.coding-standards.sqli.direct_db_query
+// codevigilant.php.coding-standards.auth.loose_comparison_secret
+// codevigilant.php.coding-standards.injection.do_shortcode_user_input
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -151,4 +153,41 @@ function vuln_direct_db_get_results() {
 
 function vuln_filter_default() {
     $val = filter_input(INPUT_GET, 'param', FILTER_DEFAULT);
+}
+
+// ---------------------------------------------------------------------------
+// Type juggling — loose comparison of an authentication value
+// Triggers: auth.loose_comparison_secret
+// ---------------------------------------------------------------------------
+
+function vuln_loose_token_comparison() {
+    if ($_GET['token'] == get_option('my_token')) {
+        wp_set_auth_cookie(get_current_user_id());
+    }
+}
+
+function vuln_loose_api_key_comparison() {
+    if ($_POST['api_key'] != $secret_key) {
+        wp_die('Invalid key');
+    }
+}
+
+function vuln_loose_hash_comparison() {
+    $password = $_POST['password'];
+    if (md5($password) == $stored_hash) {
+        wp_set_auth_cookie(get_current_user_id());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shortcode execution — do_shortcode() on request-derived data
+// Triggers: injection.do_shortcode_user_input
+// ---------------------------------------------------------------------------
+
+function vuln_shortcode_from_get() {
+    return do_shortcode($_GET['code']);
+}
+
+function vuln_shortcode_from_query_var() {
+    return do_shortcode(get_query_var('code'));
 }
