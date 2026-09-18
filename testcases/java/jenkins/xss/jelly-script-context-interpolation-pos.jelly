@@ -1,0 +1,13 @@
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+    <l:layout>
+        <l:main-panel>
+            <script type="text/javascript">
+                if("${it.buildStatus}" == "SUCCEEDED") {
+                    document.write('<tr><td><a href="' + '${it.artifactUrl}' + '">' + '${it.bucketName}' + '</a></td></tr>');
+                }
+                document.write('<h2><a href="${it.logsUrl}" target="_blank">logs</a></h2>');
+                document.write('<tr><td>${it.sourceVersion}</td></tr>');
+            </script>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

@@ -1,0 +1,26 @@
+<j:jelly xmlns:j="jelly:core" xmlns:h="jelly:hudson.tools" xmlns:l="/lib/layout">
+    <l:layout>
+        <l:main-panel>
+            <!-- static script body: no interpolation -->
+            <script type="text/javascript">
+                var mode = "static";
+                document.write('<tr><td>fixed label</td></tr>');
+            </script>
+
+            <!-- interpolation rendered by the framework in element-body context -->
+            <table>
+                <tr><td>${it.buildStatus}</td><td>${it.sourceVersion}</td></tr>
+            </table>
+
+            <!-- explicit escaping helper applied to the value -->
+            <script type="text/javascript">
+                document.write('<tr><td>${h.xmlEscape(it.sourceVersion)}</td></tr>');
+            </script>
+
+            <!-- script assembled from a message resource, not from a model value -->
+            <script type="text/javascript">
+                document.write('<h2>${%dashboard.blurb}</h2>');
+            </script>
+        </l:main-panel>
+    </l:layout>
+</j:jelly>

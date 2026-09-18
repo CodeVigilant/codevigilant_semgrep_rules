@@ -1,0 +1,59 @@
+rules:
+  # ============================================================================
+  # JELLY VIEW INTERPOLATION INSIDE AN INLINE <script> BLOCK (JS CONTEXT)
+  # (CWE-79 Improper Neutralization of Input During Web Page Generation)
+  # Generic shape: a Stapler/Jenkins Jelly view template places a ${...}
+  # expression inside an inline <script> block, i.e. in a JavaScript string or
+  # JS code context rather than in element-body or attribute context. Jenkins/
+  # Stapler Jelly output escaping ("escape-by-default", enabled by default)
+  # encodes only '<' and '&' (see the Jelly EscapingExpression implementation),
+  # so single quotes, double quotes, backslashes and other JS metacharacters
+  # reach the browser unchanged. A value containing a single quote closes the
+  # JS string literal the expression was concatenated into (or a double quote
+  # closes a JS string used in an if("${...}") test), and the remainder of the
+  # value executes as script in the Jenkins UI -> stored XSS on a build/action
+  # page whenever the interpolated value derives from external data (remote
+  # API responses, SCM/build metadata, configuration fields, build parameters).
+  # Render such values into element bodies/attributes, or JS-escape them (and
+  # prefer data attributes / JSON payloads with explicit escaping) instead of
+  # concatenating them into script strings.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.xss.jelly-script-context-interpolation
+    mode: search
+    severity: HIGH
+    message: >-
+      A Jelly view template interpolates a ${...} expression inside an inline
+      <script> block. Jelly's output escaping (escape-by-default) only encodes
+      '<' and '&', so quotes and other JavaScript metacharacters pass through
+      unescaped: a value containing a quote terminates the surrounding JS
+      string literal and the rest of the value is executed as script in the
+      Jenkins UI (stored XSS, CWE-79). Do not concatenate model/API-derived
+      values into inline script; render them in element bodies/attributes, or
+      apply explicit JavaScript escaping (or emit data attributes / a JSON
+      payload that is parsed with proper escaping).
+    languages: [generic]
+    paths:
+      include:
+        - "*.jelly"
+    patterns:
+      - pattern-regex: '(?s)<script(?:(?!</script>).)*?\$\{[^}]+\}'
+      - pattern-not-regex: '\$\{\s*%[^}]*\}'
+      - pattern-not-regex: '\$\{[^}]*(?:Escape|escape|encode|Encode)[A-Za-z]*\([^}]*\}'
+    metadata:
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - jenkins
+        - jelly
+        - stapler
+      confidence: MEDIUM
+      category: security
+      references:
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+        - https://www.jenkins.io/doc/developer/views/jelly-tag-library/
+        - https://owasp.org/www-community/attacks/xss/
+      source: independent security review
+      license: MIT
