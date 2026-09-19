@@ -1,0 +1,289 @@
+rules:
+  # ============================================================================
+  # STATE-CHANGING OBJECT WRITE KEYED BY A REQUEST-SUPPLIED ID WITHOUT AN
+  # OBJECT-SCOPED AUTHORIZATION / OWNERSHIP CHECK (IDOR)
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags handlers that mutate or delete an object (post, comment, attachment,
+  # user, meta row, arbitrary $wpdb row) using an identifier taken from request
+  # input ($_GET/$_POST/$_REQUEST/$_COOKIE or a REST $request->get_param())
+  # when the surrounding handler carries no authorization bound to that object:
+  #
+  #   * an object-scoped capability check - current_user_can($cap, $id),
+  #     user_can($user, $cap, $id)
+  #   * a resolved owner - a comparison against get_current_user_id() /
+  #     wp_get_current_user()
+  #   * a site/network administration gate - manage_options / is_super_admin()
+  #
+  # A nonce check does NOT count as authorization: it *** proves the request
+  # was intentional. Neither does a generic capability such as edit_posts /
+  # read / upload_files: it does not prove the caller may act on the specific
+  # object named by the request. WordPress object identifiers are sequential
+  # and site-global, so an unbound check lets any holder of a generic
+  # capability modify or delete records they do not own
+  # (CWE-639 / CWE-862 - OWASP A01:2021 Broken Access Control).
+  #
+  # NOTE: an ownership decision delegated to a helper method, or taken against
+  # a value re-read from a custom table, is not visible to these patterns -
+  # treat a match as a prompt to read the handler, not as proof of the flaw.
+
+  # ── identifier bound to a variable, then used as the object key ────────────
+  - id: codevigilant.php.wordpress.auth.request_object_id_write_without_ownership_check
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      # ---- the object identifier is assigned from request input ------------
+      - pattern-either:
+          - patterns:
+              - pattern-inside: |
+                  $ID = $SRC[$KEY];
+                  ...
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: \$_GET|\$_POST|\$_REQUEST|\$_COOKIE
+          - patterns:
+              - pattern-inside: |
+                  $ID = absint($SRC[$KEY]);
+                  ...
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: \$_GET|\$_POST|\$_REQUEST|\$_COOKIE
+          - patterns:
+              - pattern-inside: |
+                  $ID = intval($SRC[$KEY]);
+                  ...
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: \$_GET|\$_POST|\$_REQUEST|\$_COOKIE
+          - patterns:
+              - pattern-inside: |
+                  $ID = (int) $SRC[$KEY];
+                  ...
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: \$_GET|\$_POST|\$_REQUEST|\$_COOKIE
+          - pattern-inside: |
+              $ID = $REQ->get_param(...);
+              ...
+      # ---- the identifier is written into the object key of a mutation -----
+      - pattern-either:
+          - patterns:
+              - pattern: $FUNC($ID, ...)
+              - metavariable-regex:
+                  metavariable: $FUNC
+                  regex: (wp_delete_post|wp_trash_post|wp_delete_comment|wp_delete_attachment|wp_delete_user|update_post_meta|delete_post_meta|update_comment_meta|delete_comment_meta|update_user_meta|delete_user_meta)
+          - pattern: $WPDB->update($TABLE, $DATA, array($COL => $ID))
+          - pattern: $WPDB->delete($TABLE, array($COL => $ID))
+          - pattern: wp_update_post(array('ID' => $ID, ...))
+          - pattern: wp_update_user(array('ID' => $ID, ...))
+          - pattern: wp_update_comment(array('comment_ID' => $ID, ...))
+      # ---- exclude handlers whose authorization is bound to the object -----
+      - pattern-not-inside: |
+          if (current_user_can($CAP, $ID)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (! current_user_can($CAP, $ID)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          current_user_can($CAP, $ID);
+          ...
+      - pattern-not-inside: |
+          if (user_can($USER, $CAP, $ID)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (! user_can($USER, $CAP, $ID)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          user_can($USER, $CAP, $ID);
+          ...
+      # ---- exclude handlers that resolve the owner of the object -----------
+      - pattern-not-inside: |
+          $CURUSER = get_current_user_id();
+          ...
+      - pattern-not-inside: |
+          $CURUSER = wp_get_current_user();
+          ...
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(get_current_user_id\(\)|wp_get_current_user\(\)).*
+      # ---- exclude handlers gated on site/network administration ----------
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(is_super_admin\(\)|current_user_can\( *["\']manage_(options|network)["\']).*
+      # ---- exclude handlers whose condition already scopes a capability ----
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(user_can\([^)]*,[^)]*,[^)]*\)|current_user_can\([^)]*,[^)]*\)).*
+    message: |
+      Detected a state-changing write (post/comment/user/meta/database row)
+      keyed by an object identifier taken from request input, in a handler that
+      carries no authorization bound to that object. A nonce check and a
+      generic capability (edit_posts, read, upload_files, ...) do not prove the
+      caller may act on the specific object named by the request, so any user
+      holding the generic capability can modify or delete records they do not
+      own - an Insecure Direct Object Reference. Resolve the object, verify its
+      owner against the current user, and/or use the object-scoped capability
+      form current_user_can('edit_post', $id) before the write.
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/
+      source: CodeVigilant
+      license: MIT
+
+  # ── identifier read inline from the request into the object key ────────────
+  - id: codevigilant.php.wordpress.auth.inline_request_object_id_write_without_ownership_check
+    severity: HIGH
+    languages: [php]
+    mode: search
+    patterns:
+      - pattern-either:
+          # ---- request superglobal used inline as the object key -----------
+          - patterns:
+              - pattern-either:
+                  - patterns:
+                      - pattern: $FUNC($SRC[$KEY], ...)
+                      - metavariable-regex:
+                          metavariable: $FUNC
+                          regex: (wp_delete_post|wp_trash_post|wp_delete_comment|wp_delete_attachment|wp_delete_user|update_post_meta|delete_post_meta|update_comment_meta|delete_comment_meta|update_user_meta|delete_user_meta)
+                  - pattern: $WPDB->update($TABLE, $DATA, array($COL => $SRC[$KEY]))
+                  - pattern: $WPDB->delete($TABLE, array($COL => $SRC[$KEY]))
+                  - pattern: wp_update_post(array('ID' => $SRC[$KEY], ...))
+                  - pattern: wp_update_user(array('ID' => $SRC[$KEY], ...))
+                  - pattern: wp_update_comment(array('comment_ID' => $SRC[$KEY], ...))
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: \$_GET|\$_POST|\$_REQUEST|\$_COOKIE
+          # ---- REST request parameter used inline as the object key --------
+          - pattern-either:
+              - patterns:
+                  - pattern: $FUNC($REQ->get_param(...), ...)
+                  - metavariable-regex:
+                      metavariable: $FUNC
+                      regex: (wp_delete_post|wp_trash_post|wp_delete_comment|wp_delete_attachment|wp_delete_user|update_post_meta|delete_post_meta|update_comment_meta|delete_comment_meta|update_user_meta|delete_user_meta)
+              - pattern: $WPDB->update($TABLE, $DATA, array($COL => $REQ->get_param(...)))
+              - pattern: $WPDB->delete($TABLE, array($COL => $REQ->get_param(...)))
+              - pattern: wp_update_post(array('ID' => $REQ->get_param(...), ...))
+              - pattern: wp_update_user(array('ID' => $REQ->get_param(...), ...))
+              - pattern: wp_update_comment(array('comment_ID' => $REQ->get_param(...), ...))
+      # ---- exclude handlers whose authorization is bound to the object -----
+      - pattern-not-inside: |
+          if (current_user_can($CAP, $ID)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (! current_user_can($CAP, $ID)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          current_user_can($CAP, $ID);
+          ...
+      - pattern-not-inside: |
+          if (user_can($USER, $CAP, $ID)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (! user_can($USER, $CAP, $ID)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          user_can($USER, $CAP, $ID);
+          ...
+      # ---- exclude handlers that resolve the owner of the object -----------
+      - pattern-not-inside: |
+          $CURUSER = get_current_user_id();
+          ...
+      - pattern-not-inside: |
+          $CURUSER = wp_get_current_user();
+          ...
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(get_current_user_id\(\)|wp_get_current_user\(\)).*
+      # ---- exclude handlers gated on site/network administration ----------
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(is_super_admin\(\)|current_user_can\( *["\']manage_(options|network)["\']).*
+      # ---- exclude handlers whose condition already scopes a capability ----
+      - pattern-not-inside:
+          patterns:
+            - pattern: |
+                if ($COND) {
+                  ...
+                }
+                ...
+            - metavariable-regex:
+                metavariable: $COND
+                regex: .*(user_can\([^)]*,[^)]*,[^)]*\)|current_user_can\([^)]*,[^)]*\)).*
+    message: |
+      Detected a state-changing write (post/comment/user/meta/database row)
+      whose object key is read straight from request input, in a handler that
+      carries no authorization bound to that object. A nonce check and a
+      generic capability (edit_posts, read, upload_files, ...) do not prove the
+      caller may act on the specific object named by the request, so any user
+      holding the generic capability can modify or delete records they do not
+      own - an Insecure Direct Object Reference. Resolve the object, verify its
+      owner against the current user, and/or use the object-scoped capability
+      form current_user_can('edit_post', $id) before the write.
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/authorization/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/
+      source: CodeVigilant
+      license: MIT
