@@ -1,0 +1,58 @@
+rules:
+  # ============================================================================
+  # SYMLINK-FOLLOWING RECURSIVE TREE WALK USED TO COLLECT FILES (CWE-59 /
+  # CWE-22)
+  # Generic shape: a recursive traversal enables `FileVisitOption.FOLLOW_LINKS`
+  # (e.g. `Files.walkFileTree($BASE, EnumSet.of(FileVisitOption.FOLLOW_LINKS),
+  # Integer.MAX_VALUE, $VISITOR)`), so the walker descends into symlinks found
+  # inside a directory tree that is treated as workspace/build content. A
+  # symlink planted in that tree (or created by any earlier build step /
+  # checked-in setup script) redirects the traversal OUTSIDE the base
+  # directory, and the collected paths are then read, archived or uploaded -
+  # i.e. files outside the intended root are disclosed (CWE-59) and can also
+  # be reached by a `..`-style name (CWE-22). A symlink cycle additionally
+  # surfaces as `FileSystemLoopException` from the visitor and aborts the
+  # operation (CWE-835). Walk WITHOUT following links (default), or confine
+  # every visited path to the base (real-path containment check) before
+  # reading/archiving it.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.path-traversal.symlink-following-tree-walk
+    message: >-
+      A recursive directory traversal is performed with
+      `FileVisitOption.FOLLOW_LINKS`, so symlinks inside the traversed tree are
+      followed. When the tree is attacker-influenceable content (a workspace,
+      uploaded/unpacked archive, cache or checkout directory), a symlink that
+      points outside the intended root makes the walker collect, read, archive
+      or upload files from OUTSIDE that root (CWE-59 improper link resolution /
+      CWE-22 path traversal), and a symlink cycle raises FileSystemLoopException
+      that aborts the walk. Traverse without FOLLOW_LINKS, or resolve each
+      visited path and verify it is still contained under the intended base
+      directory before using it.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: Files.walkFileTree($BASE, $OPTS, $DEPTH, $VISITOR)
+          - pattern: Files.walkFileTree($BASE, $OPTS, $VISITOR)
+          - pattern: Files.walk($BASE, $OPTS, $DEPTH)
+      - metavariable-pattern:
+          metavariable: $OPTS
+          pattern-either:
+            - pattern: EnumSet.of(..., FileVisitOption.FOLLOW_LINKS, ...)
+            - pattern: EnumSet.of(FileVisitOption.FOLLOW_LINKS)
+            - pattern: EnumSet.allOf(FileVisitOption.class)
+            - pattern: FileVisitOption.FOLLOW_LINKS
+      - pattern-not-inside: |
+          if (<... $P.startsWith($BASE) ...>) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-59: Improper Link Resolution Before File Access ('Link Following')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/59.html
+        - https://docs.oracle.com/javase/8/docs/api/java/nio/file/FileVisitOption.html
+      source: semgrep-rule-gap
+      license: MIT
