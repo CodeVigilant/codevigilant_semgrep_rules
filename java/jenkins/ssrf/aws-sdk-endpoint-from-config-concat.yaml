@@ -1,0 +1,51 @@
+rules:
+  # ============================================================================
+  # AWS SDK CLIENT ENDPOINT ASSEMBLED FROM A CONFIG-DERIVED VALUE (CWE-918)
+  # Generic shape: a service client endpoint is built by concatenating a
+  # literal scheme/prefix with a non-literal value that comes from plugin/job
+  # configuration or another runtime field, e.g.
+  #   $CLIENT.setEndpoint("https://" + $CONFIG + ".amazonaws.com")
+  # A value containing a path separator, `@`, `#`, or `?` changes the parsed
+  # authority, so the host of every subsequent signed API call (and the
+  # credentials/session tokens in its headers) is redirected to a host the
+  # config author chooses - server-side request forgery plus response forgery
+  # for the service (arbitrary payloads returned to the caller). Never assemble
+  # an endpoint from configuration: use fixed endpoints / a region enum looked
+  # up in an allowlist, or validate the value against a strict hostname pattern
+  # (e.g. `^[a-z0-9-]+$`) before interpolation.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.ssrf.aws-sdk-endpoint-from-config-concat
+    message: >-
+      An AWS SDK client endpoint is assembled with string concatenation from a
+      non-literal value (`$CLIENT.setEndpoint("https://" + $VALUE + ...)`).
+      A configured value that contains `/`, `@`, `?` or `#` moves the parsed
+      authority, so all signed API traffic (and the credential/session headers
+      it carries) is sent to an attacker-chosen host, and the attacker
+      controls the responses the client consumes (CWE-918 SSRF + forged
+      service replies). Build the endpoint from a fixed constant or a value
+      looked up in an allowlist, and reject anything that is not a strict
+      hostname before use.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern: $CLIENT.setEndpoint($EP)
+      - metavariable-regex:
+          metavariable: $EP
+          regex: '.*"[^"]*"\s*\+.*[A-Za-z_$][A-Za-z0-9_$.]*'
+      - pattern-not: $CLIENT.setEndpoint("...")
+      - pattern-not-inside: |
+          if ($VALUE.matches($PATTERN)) {
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/918.html
+        - https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/connecting.html
+      source: semgrep-rule-gap
+      license: MIT
