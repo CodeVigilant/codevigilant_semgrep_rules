@@ -1,0 +1,69 @@
+rules:
+  - id: codevigilant.php.wordpress.fileops.upload.client_controlled.direct
+    patterns:
+      - pattern-either:
+          - pattern: move_uploaded_file($_FILES[$K]['tmp_name'], <... $_FILES[$K2]['name'] ...>)
+          - pattern: move_uploaded_file($_FILES[$K]['tmp_name'], <... $_FILES[$K2]['full_path'] ...>)
+          - pattern: move_uploaded_file($_FILES[$K]['tmp_name'], <... $_POST[$P] ...>)
+          - pattern: move_uploaded_file($_FILES[$K]['tmp_name'], <... $_GET[$P] ...>)
+          - pattern: move_uploaded_file($_FILES[$K]['tmp_name'], <... $_REQUEST[$P] ...>)
+          - pattern: copy($_FILES[$K]['tmp_name'], <... $_FILES[$K2]['name'] ...>)
+          - pattern: rename($_FILES[$K]['tmp_name'], <... $_FILES[$K2]['name'] ...>)
+          - pattern: wp_handle_upload($_FILES[$K], <... ['test_form' => false] ...>)
+      - pattern-not: move_uploaded_file($_FILES[$K]['tmp_name'], <... sanitize_file_name(...) ...>)
+      - pattern-not: move_uploaded_file($_FILES[$K]['tmp_name'], <... wp_unique_filename(...) ...>)
+      - pattern-not: move_uploaded_file($_FILES[$K]['tmp_name'], <... wp_check_filetype(...) ...>)
+    message: |
+      Unrestricted file upload in WordPress: the stored file name/path is taken from client-controlled input.
+      Reusing $_FILES[...]['name'] (or a $_POST/$_GET/$_REQUEST path) as the upload destination lets an attacker
+      choose the extension and path, which leads to arbitrary file write / code execution (CWE-434).
+      Generate the stored name server-side and validate the type with wp_check_filetype() against an
+      extension allow-list, then pass the result through sanitize_file_name() / wp_unique_filename().
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_handle_upload/
+        - https://developer.wordpress.org/reference/functions/wp_check_filetype/
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://developer.wordpress.org/reference/functions/wp_unique_filename/
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.fileops.upload.client_controlled.taint
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_FILES[$K]['name']
+              - pattern: $_FILES[$K]['full_path']
+    pattern-sanitizers:
+      - pattern: sanitize_file_name(...)
+      - pattern: wp_unique_filename(...)
+      - pattern: wp_check_filetype(...)
+      - pattern: basename(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: move_uploaded_file($SRC, $SINK)
+          - pattern: copy($SRC, $SINK)
+          - pattern: rename($SRC, $SINK)
+    message: |
+      Unrestricted file upload in WordPress: a client-controlled file name flows into an upload/write destination.
+      An attacker controls the extension or path of the stored file, which leads to arbitrary file write /
+      code execution (CWE-434). Build the destination from a server-generated name and validate the type
+      with wp_check_filetype() against an allow-list before writing.
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_check_filetype/
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+    languages: [php]
+    severity: ERROR

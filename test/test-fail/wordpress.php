@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.upload.client_controlled.direct
+// codevigilant.php.wordpress.fileops.upload.client_controlled.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,24 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Unrestricted File Upload — client-controlled destination
+// ---------------------------------------------------------------------------
+
+function vuln_upload_client_filename() {
+    // EXPECTED: fileops.upload.client_controlled.direct, fileops.upload.client_controlled.taint
+    move_uploaded_file($_FILES['file']['tmp_name'], WP_CONTENT_DIR . '/uploads/' . $_FILES['file']['name']);
+}
+
+function vuln_upload_assign_then_move() {
+    // EXPECTED: fileops.upload.client_controlled.taint
+    $target = WP_CONTENT_DIR . '/uploads/' . $_FILES['doc']['name'];
+    move_uploaded_file($_FILES['doc']['tmp_name'], $target);
+}
+
+function vuln_upload_post_destination() {
+    // EXPECTED: fileops.upload.client_controlled.direct
+    move_uploaded_file($_FILES['pdf']['tmp_name'], $_POST['target_path']);
 }

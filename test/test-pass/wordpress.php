@@ -143,3 +143,22 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// File Upload — server-generated name + extension allow-list (safe)
+// ---------------------------------------------------------------------------
+
+function safe_upload_image() {
+    if (!isset($_FILES['avatar']['name']) || !isset($_FILES['avatar']['tmp_name'])) {
+        return new WP_Error('no_file');
+    }
+    $raw = sanitize_file_name(wp_unslash($_FILES['avatar']['name']));
+    $check = wp_check_filetype($raw, array('jpg|jpeg' => 'image/jpeg', 'png' => 'image/png'));
+    if (empty($check['ext'])) {
+        return new WP_Error('bad_type');
+    }
+    $safe = wp_unique_filename(WP_CONTENT_DIR . '/uploads', $raw);
+    $target = WP_CONTENT_DIR . '/uploads/' . $safe;
+    move_uploaded_file($_FILES['avatar']['tmp_name'], $target);
+    return $target;
+}
