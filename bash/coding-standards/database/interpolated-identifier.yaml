@@ -1,0 +1,24 @@
+rules:
+  - id: codevigilant.bash.coding-standards.sqli.interpolated_identifier
+    message: >-
+      SQL statement assembled with a quoted identifier interpolated from a
+      shell variable (e.g. UPDATE \"$name\" ...). If the value is not a fixed
+      allowlist entry — a name read from a file, archive, database or command
+      output — it can close the identifier and inject additional SQL
+      statements. Use a fixed identifier allowlist and pass values as bound
+      parameters, never by interpolation.
+    severity: ERROR
+    languages: [bash]
+    patterns:
+      - pattern-regex: '(?i)\b(update|insert\s+into|delete\s+from|alter\s+table|select)\b[^\n]{0,200}?\\"\s*\$\{?[A-Za-z_][A-Za-z0-9_]*\}?\\"'
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      technology: shell
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/89.html
+        - https://owasp.org/Top10/A03_2021-Injection/
+      source: CodeVigilant
+      license: MIT
