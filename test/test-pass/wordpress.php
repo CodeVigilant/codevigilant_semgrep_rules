@@ -143,3 +143,32 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// REST API authorization — explicit capability check
+// ---------------------------------------------------------------------------
+
+function safe_rest_permission_callback_capability() {
+    register_rest_route('demo/v1', '/config', array(
+        'methods'             => 'GET',
+        'callback'            => 'demo_get_config',
+        'permission_callback' => function () {
+            $user = wp_get_current_user();
+            return user_can($user, 'manage_options');
+        },
+    ));
+}
+
+function safe_rest_permission_callback_named() {
+    $args = array(
+        'methods'  => 'POST',
+        'callback' => 'demo_set_config',
+    );
+    $args['permission_callback'] = 'demo_permission_check';
+    register_rest_route('demo/v1', '/set', $args);
+}
+
+function demo_permission_check() {
+    $user = wp_get_current_user();
+    return user_can($user, 'manage_options');
+}

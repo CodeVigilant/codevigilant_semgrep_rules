@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.rest.permission_callback_return_true
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,27 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// REST API authorization — no-op permission callback
+// ---------------------------------------------------------------------------
+
+function vuln_rest_permission_callback_return_true() {
+    // EXPECTED: auth.rest.permission_callback_return_true
+    register_rest_route('demo/v1', '/config', array(
+        'methods'             => 'GET',
+        'callback'            => 'demo_get_config',
+        'permission_callback' => '__return_true',
+    ));
+}
+
+function vuln_rest_permission_callback_return_true_assigned() {
+    // EXPECTED: auth.rest.permission_callback_return_true
+    $args = array(
+        'methods'  => 'POST',
+        'callback' => 'demo_set_config',
+    );
+    $args['permission_callback'] = '__return_true';
+    register_rest_route('demo/v1', '/set', $args);
 }

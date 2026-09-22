@@ -1,0 +1,40 @@
+rules:
+  # ============================================================================
+  # REST API AUTHORIZATION — explicit no-op permission callback
+  #
+  # A route registered with 'permission_callback' => '__return_true' has the
+  # REST API authorization layer switched off: every request, including
+  # unauthenticated ones, reaches the route callback. When that callback reads
+  # or writes stored data (options, user/post meta, custom tables), the data is
+  # exposed or modified by any visitor.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.auth.rest.permission_callback_return_true
+    message: |
+      REST route registered with 'permission_callback' => '__return_true'. The
+      REST API authorization layer is disabled, so unauthenticated requests
+      reach the route callback. If the callback reads or writes stored data
+      (options, user/post meta, custom tables), that data is exposed or
+      modified by any visitor. Replace the no-op callback with an explicit
+      check for the capability the operation requires, or restrict the route
+      to genuinely public, non-sensitive data.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              register_rest_route($NS, $ROUTE, array(..., 'permission_callback' => '__return_true', ...))
+          - pattern: |
+              register_rest_route($NS, $ROUTE, [..., 'permission_callback' => '__return_true', ...])
+          - pattern: $ARGS['permission_callback'] = '__return_true';
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/
+        - https://developer.wordpress.org/reference/functions/register_rest_route/
+      source: CodeVigilant
+      license: GPL-2.0-or-later
