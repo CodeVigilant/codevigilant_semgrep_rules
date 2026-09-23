@@ -1,0 +1,170 @@
+rules:
+  # ============================================================================
+  # REQUEST-SUPPLIED METADATA KEY ON A META WRITE
+  # Generic CodeVigilant rule.
+  # ============================================================================
+  #
+  # Flags a metadata write whose KEY is taken from request input without being
+  # restricted to a known set. The key is an identifier, not data: letting the
+  # caller choose it lets an unauthenticated (or low-privileged) visitor write
+  # metadata WordPress reserves for its own use - template/layout selection,
+  # thumbnail bindings, visibility flags, access-control or role metadata - and
+  # in non-default configurations turn an ordinary form submission into content
+  # injection, information disclosure or privilege escalation (CWE-639 /
+  # CWE-915). Keys must be resolved against an allowlist before the write.
+
+  # ── the key is read inline from the request at the write ──────────────────
+  - id: codevigilant.php.wordpress.auth.request_meta_key_write_inline
+    patterns:
+      - pattern-either:
+          - pattern: update_post_meta($ID, $SRC[...], ...)
+          - pattern: add_post_meta($ID, $SRC[...], ...)
+          - pattern: update_user_meta($ID, $SRC[...], ...)
+          - pattern: add_user_meta($ID, $SRC[...], ...)
+          - pattern: update_term_meta($ID, $SRC[...], ...)
+          - pattern: add_term_meta($ID, $SRC[...], ...)
+          - pattern: update_comment_meta($ID, $SRC[...], ...)
+          - pattern: add_comment_meta($ID, $SRC[...], ...)
+          - pattern: update_metadata($TYPE, $ID, $SRC[...], ...)
+          - pattern: add_metadata($TYPE, $ID, $SRC[...], ...)
+          - pattern: update_post_meta($ID, $REQ->get_param(...), ...)
+          - pattern: add_post_meta($ID, $REQ->get_param(...), ...)
+          - pattern: update_user_meta($ID, $REQ->get_param(...), ...)
+          - pattern: add_user_meta($ID, $REQ->get_param(...), ...)
+      - metavariable-regex:
+          metavariable: $SRC
+          regex: (\$_GET|\$_POST|\$_REQUEST|\$_COOKIE)
+      # ---- exclude keys resolved against an allowlist -----------------------
+      - pattern-not-inside: |
+          if (in_array($SRC[...], $ALLOWED)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (! in_array($SRC[...], $ALLOWED)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (array_key_exists($SRC[...], $ALLOWED)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (isset($ALLOWED[$SRC[...]])) {
+            ...
+          }
+    message: |
+      Detected a metadata write whose key comes straight from request input.
+      The key selects WHICH metadata is written, so a caller-chosen key can
+      overwrite metadata WordPress or the plugin reserves for its own use
+      (template/layout selection, thumbnail bindings, visibility or
+      access-control metadata), which in non-default configurations becomes
+      content injection, information disclosure or privilege escalation.
+      Resolve the key against an explicit allowlist of writable keys before
+      calling add/update_*_meta (CWE-639).
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/update_post_meta/
+        - https://developer.wordpress.org/plugins/metadata/
+        - https://developer.wordpress.org/apis/security/
+      source: CodeVigilant
+      license: MIT
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  # ── assignment-then-use: the key is stored (or is the foreach key) first ──
+  - id: codevigilant.php.wordpress.auth.request_meta_key_write_assigned
+    patterns:
+      - pattern-either:
+          # key assigned from a request superglobal
+          - patterns:
+              - pattern-inside: |
+                  $KEY = $SRC[...];
+                  ...
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: (\$_GET|\$_POST|\$_REQUEST|\$_COOKIE)
+          # key is the iteration variable over a request array
+          - patterns:
+              - pattern-inside: |
+                  foreach ($SRC[...] as $KEY => $VALUE) {
+                    ...
+                  }
+              - metavariable-regex:
+                  metavariable: $SRC
+                  regex: (\$_GET|\$_POST|\$_REQUEST|\$_COOKIE)
+          # key assigned from a REST request object
+          - pattern-inside: |
+              $KEY = $REQ->get_param(...);
+              ...
+      - pattern-either:
+          - pattern: update_post_meta($ID, $KEY, ...)
+          - pattern: add_post_meta($ID, $KEY, ...)
+          - pattern: update_user_meta($ID, $KEY, ...)
+          - pattern: add_user_meta($ID, $KEY, ...)
+          - pattern: update_term_meta($ID, $KEY, ...)
+          - pattern: add_term_meta($ID, $KEY, ...)
+          - pattern: update_comment_meta($ID, $KEY, ...)
+          - pattern: add_comment_meta($ID, $KEY, ...)
+          - pattern: update_metadata($TYPE, $ID, $KEY, ...)
+          - pattern: add_metadata($TYPE, $ID, $KEY, ...)
+      # ---- exclude keys resolved against an allowlist -----------------------
+      # (a) the write sits inside the allowlist branch
+      - pattern-not-inside: |
+          if (in_array($KEY, $ALLOWED)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (array_key_exists($KEY, $ALLOWED)) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (isset($ALLOWED[$KEY])) {
+            ...
+          }
+      # (b) the allowlist is enforced by bailing out before the write
+      - pattern-not-inside: |
+          if (! in_array($KEY, $ALLOWED)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          if (! array_key_exists($KEY, $ALLOWED)) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          if (! isset($ALLOWED[$KEY])) {
+            ...
+          }
+          ...
+      - pattern-not-inside: |
+          $KEY = in_array($KEY, $ALLOWED) ? $KEY : $DEFAULT;
+          ...
+    message: |
+      Detected request input stored into a variable and then used as the KEY of
+      a metadata write. The key selects WHICH metadata is written, so a
+      caller-chosen key can overwrite metadata WordPress or the plugin reserves
+      for its own use, which in non-default configurations becomes content
+      injection, information disclosure or privilege escalation. Resolve the
+      key against an explicit allowlist of writable keys before calling
+      add/update_*_meta (CWE-639).
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/update_post_meta/
+        - https://developer.wordpress.org/plugins/metadata/
+        - https://developer.wordpress.org/apis/security/
+      source: CodeVigilant
+      license: MIT
+    languages: [php]
+    mode: search
+    severity: HIGH

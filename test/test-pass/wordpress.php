@@ -143,3 +143,27 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Metadata write — literal key, request supplies only the value
+// ---------------------------------------------------------------------------
+
+function safe_meta_key_literal() {
+    if (!isset($_POST['meta_value'])) { return; }
+    $post_id = 1;
+    $value = sanitize_text_field($_POST['meta_value']);
+    add_post_meta($post_id, 'my_plugin_setting', $value);
+}
+
+// ---------------------------------------------------------------------------
+// Metadata write — caller-chosen key restricted to an explicit allowlist
+// ---------------------------------------------------------------------------
+
+function safe_meta_key_allowlisted() {
+    if (!isset($_POST['meta_key'])) { return; }
+    $post_id = 1;
+    $allowed = array('my_plugin_a', 'my_plugin_b');
+    $key = sanitize_key($_POST['meta_key']);
+    if (!in_array($key, $allowed, true)) { return; }
+    add_post_meta($post_id, $key, '1');
+}

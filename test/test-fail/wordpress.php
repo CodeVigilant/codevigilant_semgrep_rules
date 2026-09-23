@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.request_meta_key_write_inline
+// codevigilant.php.wordpress.auth.request_meta_key_write_assigned
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,42 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Metadata key taken from request input (caller-chosen metadata key)
+// ---------------------------------------------------------------------------
+
+function vuln_request_meta_key_write_inline() {
+    // EXPECTED: auth.request_meta_key_write_inline
+    $post_id = 1;
+    update_post_meta($post_id, $_POST['meta_key'], $_POST['meta_value']);
+}
+
+function vuln_request_meta_key_write_assigned() {
+    // EXPECTED: auth.request_meta_key_write_assigned
+    $post_id = 1;
+    $meta_key = $_POST['meta_key'];
+    $meta_value = sanitize_text_field($_POST['meta_value']);
+    update_post_meta($post_id, $meta_key, $meta_value);
+}
+
+function vuln_request_meta_key_write_foreach() {
+    // EXPECTED: auth.request_meta_key_write_assigned
+    $post_id = 1;
+    foreach ($_POST['meta'] as $key => $value) {
+        update_post_meta($post_id, $key, $value);
+    }
+}
+
+// Negative control: the key is resolved against an allowlist before the write,
+// so NEITHER rule may fire. A finding here surfaces as EXTRA in the harness.
+function safe_request_meta_key_allowlisted() {
+    $post_id = 1;
+    $allowed = array('my_plugin_a', 'my_plugin_b');
+    $key = sanitize_key($_POST['meta_key']);
+    if (! in_array($key, $allowed, true)) {
+        return;
+    }
+    update_post_meta($post_id, $key, sanitize_text_field($_POST['meta_value']));
 }
