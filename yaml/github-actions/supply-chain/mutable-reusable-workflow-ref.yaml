@@ -1,0 +1,61 @@
+rules:
+  # ============================================================================
+  # REUSABLE WORKFLOW CALLED THROUGH A MUTABLE REF WHILE SECRETS ARE PASSED
+  # Source: GitHub Actions security hardening guidance
+  #   https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+  #   https://docs.github.com/en/actions/sharing-automations/reusing-workflows
+  # License: MIT (rule text authored for this ruleset)
+  #
+  # Scope note: the community/OSS ruleset covers *step* level `uses:` only
+  # (`pattern-inside: "{steps: ...}"`), so a job level reusable-workflow call
+  # (`jobs.<id>.uses:`) that forwards secrets to a tag/branch reference is not
+  # detected by it. This rule covers that job level shape.
+  # ============================================================================
+
+  - id: codevigilant.yaml.github-actions.supply-chain.mutable-reusable-workflow-ref
+    message: >-
+      A job calls a reusable workflow through a mutable reference (tag or branch)
+      while handing secrets to it. The tag/branch can be silently repointed by the
+      owner of the called repository, so a mutable reference means the called code
+      is not immutable and can change without any commit in this repository. Pin
+      the call to a full 40-character commit SHA, e.g.
+      `uses: owner/repo/.github/workflows/workflow.yml@8ade135a41bc03ea155e62e844d188df1ea18608`.
+    severity: ERROR
+    languages:
+      - yaml
+    patterns:
+      - pattern-inside: |
+          jobs: ...
+      - pattern-either:
+          - pattern: |
+              uses: "$USES"
+              ...
+              secrets: ...
+          - pattern: |
+              secrets: ...
+              ...
+              uses: "$USES"
+      - metavariable-pattern:
+          metavariable: $USES
+          language: generic
+          patterns:
+            # reusable workflow call: owner/repo/.github/workflows/file.yml@ref
+            - pattern-regex: '^[^./][^\s]*/\.github/workflows/[^\s]+@[^\s]+$'
+            # not pinned to a full length commit SHA
+            - pattern-not-regex: '@[0-9a-f]{40}$'
+    metadata:
+      category: security
+      cwe:
+        - "CWE-1357: Reliance on Insufficiently Trustworthy Component"
+        - "CWE-353: Missing Support for Integrity Check"
+        - "CWE-522: Insufficiently Protected Credentials"
+      owasp:
+        - "A08:2021 - Software and Data Integrity Failures"
+      technology:
+        - github-actions
+      confidence: MEDIUM
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+        - https://docs.github.com/en/actions/sharing-automations/reusing-workflows
+      source: GitHub Actions security hardening guidance
+      license: MIT
