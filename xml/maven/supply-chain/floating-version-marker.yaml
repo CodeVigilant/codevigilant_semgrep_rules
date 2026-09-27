@@ -1,0 +1,55 @@
+rules:
+  # ============================================================================
+  # DEPENDENCY DECLARED WITH A MOVING VERSION MARKER (MOVING TARGET)
+  # Source: Maven project documentation - POM reference, dependency version
+  #   requirement specification
+  #   https://maven.apache.org/pom.html#dependencies
+  # License: MIT (rule text authored for this ruleset)
+  #
+  # Scope note: the literal markers `RELEASE` / `LATEST` are resolved by the
+  # build tool at build time to "newest artifact currently published", so two
+  # builds of the same revision can consume different artifacts and no
+  # integrity check against a known-good revision is possible. Only the exact
+  # marker values are matched: pinned versions, property placeholders
+  # (`${...}`) and qualifier strings such as `1.2.3.RELEASE` are not flagged,
+  # and neither are version ranges.
+  # ============================================================================
+
+  - id: codevigilant.xml.maven.supply-chain.floating-version-marker
+    mode: search
+    message: >-
+      A dependency (or build-plugin) version is declared with the moving marker
+      "RELEASE"/"LATEST", which the build tool resolves at build time to the
+      newest artifact currently published in the repository. The build is
+      therefore not reproducible, a newly published (possibly malicious or
+      immediately deleted) release is consumed with no commit or review in this
+      repository, and the resolved artifact cannot be checked against a
+      known-good revision. Declare an exact pinned version and bump it through a
+      reviewed change, or use a version-range/lock mechanism that yields an
+      immutable coordinate.
+    severity: ERROR
+    languages:
+      - xml
+    patterns:
+      - pattern: <version>$V</version>
+      - metavariable-regex:
+          metavariable: $V
+          regex: ^\s*(RELEASE|LATEST)\s*$
+    metadata:
+      category: security
+      cwe:
+        - "CWE-1357: Reliance on Insufficiently Trustworthy Component"
+        - "CWE-1104: Use of Unmaintained Third Party Components"
+        - "CWE-353: Missing Support for Integrity Check"
+      owasp:
+        - "A08:2021 - Software and Data Integrity Failures"
+        - "A06:2021 - Vulnerable and Outdated Components"
+      technology:
+        - maven
+      confidence: HIGH
+      references:
+        - https://maven.apache.org/pom.html#dependencies
+        - https://cwe.mitre.org/data/definitions/1357.html
+        - https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+      source: independent security review
+      license: MIT
