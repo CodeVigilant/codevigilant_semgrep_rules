@@ -1,0 +1,59 @@
+rules:
+  # ============================================================================
+  # RUNTIME-FETCHED SCRIPT EXECUTED BY A WORKFLOW STEP
+  # Source: GitHub Actions security hardening guidance
+  #   https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+  # License: MIT (rule text authored for this ruleset)
+  #
+  # Scope note: the community/OSS ruleset detects `curl | sh` style piped
+  # execution at step level. It has no rule for the "save a fetched script to
+  # disk, then execute that file" idiom, where the executed code comes from a
+  # remote ref (typically the remote repository's default branch) that pinning
+  # this repository's own workflows and actions does not constrain.
+  # ============================================================================
+
+  - id: codevigilant.yaml.github-actions.supply-chain.runtime-fetched-script-execution
+    message: >-
+      A workflow step downloads a script from a remote location at run time and
+      then executes the downloaded file. The executed code is whatever sits at
+      the fetched revision (usually the remote repository's default branch),
+      which pinning this repository's workflows and actions does not constrain:
+      a single push to the fetched ref then runs here with this job's token and
+      permissions. Fetch a version-pinned artifact instead and verify its
+      integrity (fixed commit SHA plus a checksum or signature check) before
+      executing it.
+    severity: ERROR
+    languages:
+      - yaml
+    patterns:
+      - pattern-inside: 'steps: [...]'
+      - pattern-inside: |
+          - run: ...
+            ...
+      - pattern: 'run: $SHELL'
+      - metavariable-pattern:
+          language: bash
+          metavariable: $SHELL
+          patterns:
+            # download a remote file into the workspace (API contents / raw URL)
+            # followed by execution of a local script file from that same block
+            - pattern-regex: '(?s)(?:gh[ \t]+api|curl|wget)[^\n]*?(?:/contents/|/raw/|raw\.githubusercontent\.com)[^\n]*?>[ \t]*[A-Za-z0-9_./-]+[\s\S]{0,400}?\n[ \t]*(?:chmod[ \t]+\+x[ \t]+[A-Za-z0-9_./-]+[ \t]*\n[ \t]*)?(?:\./|bash[ \t]+|sh[ \t]+|python3?[ \t]+)[A-Za-z0-9_./-]*\.(?:sh|bash|py)'
+            # integrity verification before execution clears the finding
+            - pattern-not-regex: '(?i)sha256sum[ \t]+-c|shasum[ \t]+-c|cosign[ \t]+verify|gpg[ \t]+--verify'
+    metadata:
+      category: security
+      cwe:
+        - "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+        - "CWE-494: Download of Code Without Integrity Check"
+        - "CWE-1357: Reliance on Insufficiently Trustworthy Component"
+      owasp:
+        - "A08:2021 - Software and Data Integrity Failures"
+      technology:
+        - github-actions
+        - bash
+      confidence: MEDIUM
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+      source: GitHub Actions security hardening guidance
+      license: MIT
