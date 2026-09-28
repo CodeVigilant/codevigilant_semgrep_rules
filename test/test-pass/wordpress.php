@@ -143,3 +143,18 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Download — path reduced to a bare file name before reading
+// ---------------------------------------------------------------------------
+
+function safe_file_download_basename() {
+    if (!isset($_GET['file'])) { return; }
+    $file = basename($_GET['file']);
+    readfile(WP_CONTENT_DIR . '/uploads/' . $file);
+}
+
+function safe_file_download_sanitized() {
+    if (!isset($_GET['file'])) { return; }
+    readfile(WP_CONTENT_DIR . '/uploads/' . sanitize_file_name($_GET['file']));
+}

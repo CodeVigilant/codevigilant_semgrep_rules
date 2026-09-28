@@ -1,0 +1,92 @@
+rules:
+  # ============================================================================
+  # ARBITRARY FILE DOWNLOAD / FILE READ (CWE-22 / CWE-98-adjacent)
+  #
+  # WordPress plugins routinely stream a requested file back to the client
+  # (invoice/report/backup/product downloads). When the path comes from
+  # request input without basename()/sanitize_file_name(), an unauthenticated
+  # or low-privilege user can walk the tree and read arbitrary files
+  # (wp-config.php, /etc/passwd, other tenants' uploads).
+  #
+  # Covers the Patchstack "Arbitrary File Download" advisory class, which has
+  # no other rule in this repo (php/ has no readfile/download primitive and
+  # PR #201 only covers the write side of CWE-22/CWE-434).
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.file_read.client_controlled.direct
+    patterns:
+      - pattern-either:
+          - pattern: readfile(<... $_GET[$K] ...>, ...)
+          - pattern: readfile(<... $_POST[$K] ...>, ...)
+          - pattern: readfile(<... $_REQUEST[$K] ...>, ...)
+          - pattern: readfile(<... $_COOKIE[$K] ...>, ...)
+          - pattern: readfile_chunked(<... $_GET[$K] ...>, ...)
+          - pattern: readfile_chunked(<... $_POST[$K] ...>, ...)
+          - pattern: readgzfile(<... $_GET[$K] ...>, ...)
+          - pattern: readgzfile(<... $_POST[$K] ...>, ...)
+          - pattern: force_download(<... $_GET[$K] ...>, ...)
+          - pattern: force_download(<... $_POST[$K] ...>, ...)
+          - pattern: edd_readfile(<... $_GET[$K] ...>, ...)
+          - pattern: edd_readfile(<... $_POST[$K] ...>, ...)
+      - pattern-not: readfile(<... basename(...) ...>, ...)
+      - pattern-not: readfile(<... sanitize_file_name(...) ...>, ...)
+      - pattern-not: readfile(<... realpath(...) ...>, ...)
+      - pattern-not: readfile_chunked(<... basename(...) ...>, ...)
+      - pattern-not: readfile_chunked(<... sanitize_file_name(...) ...>, ...)
+    message: |
+      Arbitrary file download in WordPress: a request-controlled path is streamed straight to the client
+      by readfile()/readfile_chunked()/readgzfile() (or a force_download()/edd_readfile() helper).
+      Directory traversal such as ?file=../../wp-config.php lets an attacker read any file the web
+      server can read (CWE-22). Reduce the request value to a bare file name with basename() and
+      sanitize_file_name(), then re-anchor it to a fixed directory and verify the resolved path stays
+      inside that directory (realpath() containment check) before reading.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.readfile.php
+        - https://owasp.org/www-community/attacks/Path_Traversal
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.fileops.file_read.client_controlled.taint
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: sanitize_file_name(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: readfile($SINK, ...)
+          - pattern: readfile_chunked($SINK, ...)
+          - pattern: readgzfile($SINK, ...)
+          - pattern: force_download($SINK, ...)
+          - pattern: edd_readfile($SINK, ...)
+    message: |
+      Arbitrary file download in WordPress: a request-controlled value flows into a file-read sink
+      (readfile / readfile_chunked / readgzfile / force_download / edd_readfile).
+      An attacker can traverse out of the intended directory and read arbitrary files (CWE-22).
+      Strip the path to a bare file name with basename() and sanitize_file_name(), anchor it to a fixed
+      directory, and confirm with realpath() that the result stays inside that directory before reading.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.readfile.php
+    languages: [php]
+    severity: ERROR

@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.file_read.client_controlled.direct
+// codevigilant.php.wordpress.fileops.file_read.client_controlled.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,30 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Download — request-controlled path into a file-read sink
+// ---------------------------------------------------------------------------
+
+function vuln_file_download_get() {
+    // EXPECTED: fileops.file_read.client_controlled.direct, fileops.file_read.client_controlled.taint
+    readfile($_GET['file']);
+}
+
+function vuln_file_download_post_concat() {
+    // EXPECTED: fileops.file_read.client_controlled.direct, fileops.file_read.client_controlled.taint
+    readfile(WP_CONTENT_DIR . '/uploads/' . $_POST['attachment']);
+}
+
+function vuln_file_download_taint() {
+    // EXPECTED: fileops.file_read.client_controlled.taint
+    $path = ABSPATH . 'reports/' . $_GET['report'];
+    readfile($path);
+}
+
+function vuln_file_download_force_download_taint() {
+    // EXPECTED: fileops.file_read.client_controlled.taint
+    $invoice = $_REQUEST['invoice'];
+    force_download($invoice);
 }
