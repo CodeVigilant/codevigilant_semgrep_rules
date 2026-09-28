@@ -1,0 +1,103 @@
+rules:
+  # ============================================================================
+  # PHP OBJECT INJECTION VIA BASE64-ENCODED REQUEST / SHORTCODE DATA (CWE-502)
+  #
+  # The existing rule in deserialize.yaml only fires when a request superglobal
+  # is the DIRECT argument of unserialize() inside a single function body.
+  # Real WordPress advisories routinely reach the sink one hop later:
+  #
+  #   shortcode attribute / request parameter
+  #     -> base64_decode()
+  #       -> maybe_unserialize() / unserialize()
+  #
+  # Verified live with CVE-2026-87741 (ConvertPlus <= 3.6.3, CVSS 8.8): the
+  # cp_display_preview_modal AJAX handler concatenates a sanitize_text_field()'d
+  # $style value into a shortcode string, do_shortcode() invokes [smile_modal],
+  # and smile_modal_popup() passes base64_decode($atts['...']) straight to
+  # maybe_unserialize() with no allowed_classes restriction. Nothing in php/
+  # matched that shape (see also open PR #198 for the do_shortcode() half).
+  #
+  # Scope/limitations (deliberately narrow, to keep precision high):
+  #   - Only the encode-then-deserialize leg is matched. Flows where the bytes
+  #     reach the sink without base64_decode (e.g. hex2bin(), raw request value)
+  #     are covered by the direct rule in deserialize.yaml or PR #74/#76.
+  #   - Shortcode attributes are recognised by their conventional container
+  #     names ($atts / $attr). Attributes copied into an opaque local variable
+  #     before the decode are not tracked.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.insecure_deserialization.base64_request.direct
+    patterns:
+      - pattern-either:
+          - pattern: maybe_unserialize(base64_decode(<... $_GET[$K] ...>))
+          - pattern: maybe_unserialize(base64_decode(<... $_POST[$K] ...>))
+          - pattern: maybe_unserialize(base64_decode(<... $_REQUEST[$K] ...>))
+          - pattern: maybe_unserialize(base64_decode(<... $_COOKIE[$K] ...>))
+          - pattern: maybe_unserialize(base64_decode(<... $atts[$K] ...>))
+          - pattern: maybe_unserialize(base64_decode(<... $attr[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $_GET[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $_POST[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $_REQUEST[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $_COOKIE[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $atts[$K] ...>))
+          - pattern: unserialize(base64_decode(<... $attr[$K] ...>))
+    message: |
+      PHP object injection in WordPress: base64-decoded request input or shortcode attribute data is
+      passed straight to maybe_unserialize()/unserialize() without an allowed_classes restriction.
+      An attacker who can control that value (a request parameter, or a shortcode attribute rendered
+      through do_shortcode() from attacker-influenced content) can inject a PHP object; if any
+      installed plugin or theme provides a usable POP chain this becomes file deletion, data
+      disclosure or code execution (CWE-502).
+      Use json_decode() for structured data. If PHP serialization is unavoidable, decode only after
+      an integrity check (hash_equals() over an HMAC or the WordPress nonce), and pass
+      unserialize($data, ['allowed_classes' => false]) so no object can be instantiated.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2017 - Insecure Deserialization"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.unserialize.php
+        - https://developer.wordpress.org/reference/functions/maybe_unserialize/
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.insecure_deserialization.base64_request.taint
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+              - pattern: $atts[...]
+              - pattern: $attr[...]
+    pattern-sinks:
+      - pattern-either:
+          - pattern: maybe_unserialize($SINK, ...)
+          - pattern: maybe_unserialize($SINK)
+          - pattern: unserialize($SINK, ...)
+          - pattern: unserialize($SINK)
+    message: |
+      PHP object injection in WordPress: request input or a shortcode attribute flows into
+      maybe_unserialize()/unserialize(). WordPress runs maybe_unserialize() over meta, option and
+      transient values too, so any attacker-controlled value that reaches this sink can inject a PHP
+      object and, where a POP chain is present, escalate to code execution or arbitrary file deletion
+      (CWE-502).
+      Prefer json_decode(). Otherwise verify integrity first (HMAC via hash_equals(), or a nonce check
+      that cannot fail open) and force unserialize($data, ['allowed_classes' => false]).
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2017 - Insecure Deserialization"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.php.net/manual/en/function.unserialize.php
+        - https://developer.wordpress.org/reference/functions/maybe_unserialize/
+    languages: [php]
+    severity: ERROR

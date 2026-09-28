@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.insecure_deserialization.base64_request.direct
+// codevigilant.php.wordpress.insecure_deserialization.base64_request.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,30 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// PHP Object Injection — base64-decoded request / shortcode attribute data
+// ---------------------------------------------------------------------------
+
+function vuln_deserialize_base64_direct() {
+    // EXPECTED: insecure_deserialization.base64_request.direct, insecure_deserialization.base64_request.taint
+    maybe_unserialize(base64_decode($_REQUEST['payload']));
+}
+
+function vuln_deserialize_base64_unserialize_direct() {
+    // EXPECTED: insecure_deserialization.base64_request.direct, insecure_deserialization.base64_request.taint
+    return unserialize(base64_decode($_COOKIE['state']));
+}
+
+function vuln_deserialize_base64_taint_var() {
+    // EXPECTED: insecure_deserialization.base64_request.taint
+    $raw = $_POST['state'];
+    $decoded = base64_decode($raw);
+    return maybe_unserialize($decoded);
+}
+
+function vuln_deserialize_base64_shortcode_atts() {
+    // EXPECTED: insecure_deserialization.base64_request.direct, insecure_deserialization.base64_request.taint
+    return maybe_unserialize(base64_decode($atts['data']));
 }

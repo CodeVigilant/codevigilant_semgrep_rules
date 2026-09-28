@@ -143,3 +143,22 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Deserialization — json_decode(), or unserialize() of non-request data
+// ---------------------------------------------------------------------------
+
+function safe_deserialize_base64_json() {
+    $raw = base64_decode('eyJhIjoxfQ==');
+    return json_decode($raw, true);
+}
+
+function safe_unserialize_option_values() {
+    $data = get_option('my_plugin_cache');
+    return maybe_unserialize($data);
+}
+
+function safe_shortcode_attribute_rendered_escaped() {
+    $style = isset($atts['style']) ? sanitize_html_class($atts['style']) : 'default';
+    return '<div class="' . esc_attr($style) . '">content</div>';
+}
