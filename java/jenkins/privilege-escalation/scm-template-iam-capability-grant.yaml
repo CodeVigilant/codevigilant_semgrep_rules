@@ -1,0 +1,53 @@
+rules:
+  # ============================================================================
+  # BUILD STEP GRANTS CLOUDFORMATION IAM CAPABILITIES TO A TEMPLATE THAT COMES
+  # FROM THE BUILD WORKSPACE / SCM CHECKOUT (CWE-269 / CWE-863)
+  # Generic shape: a build step (or plain library) builds a CloudFormation
+  # create/update/change-set request and unconditionally requests the
+  # CFN capability that authorises IAM resource creation/modification
+  # (CAPABILITY_IAM / CAPABILITY_NAMED_IAM). The template body it deploys is
+  # read out of the workspace (checked-out sources, build parameters, or a
+  # file referenced by the job configuration), so any actor who can change that
+  # file - a commit or pull request on the built repository - can make the
+  # stack create/modify IAM users, roles and policies with the deployment
+  # credentials and immediately obtain those privileges in the target account.
+  # Capability grants should be an explicit, reviewed option (least-privilege
+  # deploy role, trusted template source), never a hardcoded default.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.privilege-escalation.scm-template.iam-capability-grant
+    message: >-
+      CloudFormation request builder $REQ requests IAM capabilities
+      ($ARG) unconditionally. Requesting CAPABILITY_IAM / CAPABILITY_NAMED_IAM
+      lets the template being deployed create or modify IAM principals; when the
+      template body is read from an untrusted source (build workspace / SCM
+      checkout / build parameter) anyone who can change that file escalates to
+      the privileges of the deployment credentials (CWE-269/CWE-863). Only grant
+      IAM capabilities after an explicit, reviewed opt-in and run the deployment
+      with a least-privilege role.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: $REQ.withCapabilities($ARG, ...)
+              - metavariable-regex:
+                  metavariable: $ARG
+                  regex: '(Capability\.)?CAPABILITY_(NAMED_)?IAM'
+          - patterns:
+              - pattern: $BBB.capabilities($ARG, ...)
+              - metavariable-regex:
+                  metavariable: $ARG
+                  regex: '(Capability\.)?CAPABILITY_(NAMED_)?IAM'
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: aws-cloudformation
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/269.html
+        - https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateChangeSet.html
+        - https://www.jenkins.io/doc/developer/security/
+      source: semgrep-rule-gap
+      license: MIT
