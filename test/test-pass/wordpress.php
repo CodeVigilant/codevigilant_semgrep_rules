@@ -143,3 +143,22 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Deletion — basename + fixed directory + realpath containment
+// ---------------------------------------------------------------------------
+
+function safe_file_delete_realpath_contained() {
+    if (!isset($_GET['file'])) { return; }
+    $name = basename($_GET['file']);
+    $path = realpath('/var/www/wp-content/uploads/' . $name);
+    if ($path && strpos($path, '/var/www/wp-content/uploads/') === 0) {
+        wp_delete_file($path);
+    }
+}
+
+function safe_file_delete_sanitize_file_name() {
+    if (!isset($_POST['path'])) { return; }
+    $name = sanitize_file_name($_POST['path']);
+    wp_delete_file('/var/www/wp-content/uploads/' . $name);
+}

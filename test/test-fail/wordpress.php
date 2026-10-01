@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.file_delete.client_controlled.direct
+// codevigilant.php.wordpress.fileops.file_delete.client_controlled.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,30 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Deletion — request-controlled path into a deletion sink
+// ---------------------------------------------------------------------------
+
+function vuln_file_delete_unlink_direct() {
+    // EXPECTED: fileops.file_delete.client_controlled.direct
+    unlink($_GET['file']);
+}
+
+function vuln_file_delete_wp_delete_file_direct() {
+    // EXPECTED: fileops.file_delete.client_controlled.direct
+    wp_delete_file($_POST['path']);
+}
+
+function vuln_file_delete_rmdir_direct() {
+    // EXPECTED: fileops.file_delete.client_controlled.direct
+    rmdir($_REQUEST['dir']);
+}
+
+function vuln_file_delete_unlink_taint() {
+    // EXPECTED: fileops.file_delete.client_controlled.taint
+    $target = $_GET['attachment'];
+    $path = '/var/www/wp-content/uploads/' . $target;
+    unlink($path);
 }

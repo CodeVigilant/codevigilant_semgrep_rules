@@ -1,0 +1,97 @@
+rules:
+  # ============================================================================
+  # ARBITRARY FILE / DIRECTORY DELETION (CWE-22)
+  #
+  # WordPress plugins routinely delete files named by the client: uploaded
+  # attachments, generated exports/backups, cache files, temp artefacts. When
+  # the path comes straight from request input without basename() /
+  # sanitize_file_name(), an unauthenticated or low-privilege user can traverse
+  # out of the intended directory and delete arbitrary files the web server can
+  # write (wp-config.php, other tenants' uploads, plugin/theme files) — an
+  # availability / integrity attack that frequently pairs with a subsequent
+  # re-install RCE.
+  #
+  # Covers the Patchstack "Arbitrary File Deletion" advisory class. It is the
+  # write/delete mirror of the read-side rule in PR #210
+  # (php/wordpress/fileops/arbitrary-file-download.yaml); php/ previously had no
+  # unlink()/wp_delete_file()/rmdir() primitive at all, and PR #201 only covers
+  # the upload (write) side of CWE-22/CWE-434.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.file_delete.client_controlled.direct
+    patterns:
+      - pattern-either:
+          - pattern: unlink(<... $_GET[$K] ...>)
+          - pattern: unlink(<... $_POST[$K] ...>)
+          - pattern: unlink(<... $_REQUEST[$K] ...>)
+          - pattern: unlink(<... $_COOKIE[$K] ...>)
+          - pattern: wp_delete_file(<... $_GET[$K] ...>)
+          - pattern: wp_delete_file(<... $_POST[$K] ...>)
+          - pattern: wp_delete_file(<... $_REQUEST[$K] ...>)
+          - pattern: rmdir(<... $_GET[$K] ...>)
+          - pattern: rmdir(<... $_POST[$K] ...>)
+          - pattern: rmdir(<... $_REQUEST[$K] ...>)
+      - pattern-not: unlink(<... basename(...) ...>)
+      - pattern-not: unlink(<... sanitize_file_name(...) ...>)
+      - pattern-not: unlink(<... realpath(...) ...>)
+      - pattern-not: wp_delete_file(<... basename(...) ...>)
+      - pattern-not: wp_delete_file(<... sanitize_file_name(...) ...>)
+      - pattern-not: rmdir(<... basename(...) ...>)
+      - pattern-not: rmdir(<... realpath(...) ...>)
+    message: |
+      Arbitrary file deletion in WordPress: a request-controlled path is passed straight to a
+      deletion sink (unlink()/wp_delete_file()/rmdir()). Directory traversal such as
+      ?file=../../wp-config.php lets an attacker delete files the web server can write (CWE-22).
+      Reduce the request value to a bare file name with basename() and sanitize_file_name(), then
+      re-anchor it to a fixed directory and verify with realpath() that the resolved path stays
+      inside that directory before deleting.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_delete_file/
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.unlink.php
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.fileops.file_delete.client_controlled.taint
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: sanitize_file_name(...)
+      - pattern: realpath(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: unlink($SINK, ...)
+          - pattern: wp_delete_file($SINK)
+          - pattern: rmdir($SINK, ...)
+    message: |
+      Arbitrary file deletion in WordPress: a request-controlled value flows into a deletion sink
+      (unlink / wp_delete_file / rmdir). An attacker can traverse out of the intended directory and
+      delete arbitrary files (CWE-22). Strip the path to a bare file name with basename() and
+      sanitize_file_name(), anchor it to a fixed directory, and confirm with realpath() that the
+      result stays inside that directory before deleting.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_delete_file/
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.unlink.php
+    languages: [php]
+    severity: ERROR
