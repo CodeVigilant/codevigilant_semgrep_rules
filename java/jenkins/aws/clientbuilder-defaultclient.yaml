@@ -1,0 +1,144 @@
+rules:
+  - id: codevigilant.java.jenkins.aws.clientbuilder-defaultclient
+    message: |
+      Detected an AWS SDK client builder left on the SDK default credentials
+      path instead of an explicitly bound credential:
+
+        - `defaultClient()`, which is documented to use
+          DefaultAWSCredentialsProviderChain; and
+        - a client built with the default provider chain handed to it
+          explicitly (`new AmazonS3Client(new
+          DefaultAWSCredentialsProviderChain(), cfg)`, or a builder given
+          `withCredentials(new DefaultAWSCredentialsProviderChain())`); and
+        - `withCredentials(...)` fed directly by a credential lookup
+          (`CredentialsProvider.findCredentialById` / `lookupCredentials` /
+          an AWS credentials helper) whose result is never null-checked. When
+          that lookup returns null the builder keeps null credentials, and the
+          SDK substitutes DefaultAWSCredentialsProviderChain; and
+        - an AWS SDK v2 builder handed its credentials provider only inside a
+          null guard (`if (p != null) { b = b.credentialsProvider(p); }`).
+          When the guard is false the builder keeps no credentials provider at
+          all and the SDK substitutes DefaultCredentialsProvider, i.e. the same
+          ambient chain as above; and
+        - an AWS SDK v2 service client built through its no-argument `create()`
+          factory (`<Service>Client.create()`), which the SDK documents as
+          loading the region from DefaultAwsRegionProviderChain and the
+          credentials from DefaultCredentialsProvider, i.e. the same ambient
+          chain, with nothing bound to the plugin; and
+        - an AWS SDK v2 credentials resolution handed straight to
+          `StaticCredentialsProvider.create(...)` without a null check. A
+          Jenkins AWS credential that carries no access key/secret and no role
+          to assume resolves to null by contract, and the static provider
+          rejects null with a NullPointerException, so the credential-resolution
+          helper crashes instead of failing closed (or falling back explicitly)
+          and the intended fallback path is never reached.
+
+      In the first five cases the client authenticates with the ambient identity
+      of the JVM: process environment variables, shared config files,
+      web-identity token, and container/instance profile. In a Jenkins Builder
+      or Publisher perform() (or a descriptor do* handler) that runs as the
+      controller/node identity, so anyone able to configure or trigger the job
+      inherits an AWS identity that was never selected for it, silently
+      bypassing the intended least-privilege binding. In the last case the same
+      unresolved null instead escapes as an uncaught runtime exception on the
+      credential-resolution path (availability impact). Bind an explicit
+      credentials-plugin credential, resolve it into a local variable, and fail
+      closed when it is null before building the client or the provider.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-269: Improper Privilege Management"
+        - "CWE-476: NULL Pointer Dereference"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html
+        - https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials-chain.html
+      source: independent security review
+      license: MIT
+    languages: [java]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: $BUILDER.defaultClient()
+              - metavariable-regex:
+                  metavariable: $BUILDER
+                  regex: .*ClientBuilder
+          - patterns:
+              - pattern-either:
+                  - pattern: $CLSB.standard().withCredentials($CRED)
+                  - patterns:
+                      - pattern-inside: |
+                          $BUILDER_DECL $BUILDER = $CLSB.standard();
+                          ...
+                      - pattern: $BUILDER.withCredentials($CRED)
+              - metavariable-regex:
+                  metavariable: $CLSB
+                  regex: (?i).*clientbuilder.*
+              - metavariable-pattern:
+                  metavariable: $CRED
+                  patterns:
+                    - pattern-either:
+                        - pattern: CredentialsProvider.findCredentialById(...)
+                        - pattern: CredentialsProvider.lookupCredentials(...)
+                        - pattern: $HELPER.getCredentials(...)
+          - patterns:
+              - pattern-either:
+                  - pattern: new $CLIENT(new DefaultAWSCredentialsProviderChain(), ...)
+                  - pattern: new $CLIENT(..., new DefaultAWSCredentialsProviderChain(), ...)
+                  - pattern: $CLIENT.withCredentials(new DefaultAWSCredentialsProviderChain())
+              - metavariable-regex:
+                  metavariable: $CLIENT
+                  regex: (?i).*(amazon|aws).*(client|clientbuilder).*
+          - patterns:
+              - pattern-either:
+                  - pattern: |
+                      if ($PROVIDER != null) {
+                        ...
+                        $BUILDER = $BUILDER.credentialsProvider($PROVIDER);
+                        ...
+                      }
+                  - pattern: |
+                      if ($PROVIDER != null) {
+                        ...
+                        $BUILDER.credentialsProvider($PROVIDER);
+                        ...
+                      }
+              - metavariable-regex:
+                  metavariable: $BUILDER
+                  regex: (?i)(.*(builder|client).*|b)
+          - patterns:
+              - pattern-either:
+                  - pattern: StaticCredentialsProvider.create($C.resolveCredentials())
+                  - pattern: |
+                      $CREDS = $C.resolveCredentials();
+                      ...
+                      StaticCredentialsProvider.create($CREDS);
+              - pattern-not: |
+                  $CREDS = $C.resolveCredentials();
+                  ...
+                  if ($CREDS == null) {
+                    ...
+                  }
+                  ...
+                  StaticCredentialsProvider.create($CREDS);
+              - pattern-not: |
+                  $CREDS = $C.resolveCredentials();
+                  ...
+                  if ($CREDS != null) {
+                    ...
+                    StaticCredentialsProvider.create($CREDS);
+                    ...
+                  }
+              - pattern-not: |
+                  $CREDS = Objects.requireNonNull($C.resolveCredentials(), ...);
+                  ...
+                  StaticCredentialsProvider.create($CREDS);
+          - patterns:
+              - pattern-inside: |
+                  import software.amazon.awssdk.services.$PKG.$CLIENT;
+                  ...
+              - pattern: $CLIENT.create()
