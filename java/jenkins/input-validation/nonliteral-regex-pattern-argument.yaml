@@ -1,0 +1,54 @@
+rules:
+  # ============================================================================
+  # NON-LITERAL VALUE USED AS THE REGEX (FIRST) ARGUMENT OF
+  # String.replaceFirst / replaceAll / matches.
+  # (CWE-625 Permissive Regular Expression)
+  #
+  # Generic shape: `$STR.replaceFirst($RE, ...)` / `replaceAll($RE, ...)` /
+  # `matches($RE)` where `$RE` is NOT a string literal, is NOT wrapped in
+  # `Pattern.quote(...)`, and is NOT a compile-time constant (ALL_CAPS constant
+  # reference such as `Constants.SOME_PATTERN`, which is a deliberate regex).
+  # The argument of these methods is compiled as a REGEX, so a value that is
+  # really a literal identifier (item/job name, file name, path, header or
+  # config string) is interpreted as a pattern: `( ) + { } | . [ ]` silently
+  # change the match (the intended literal is not found or a different string
+  # matches), and an unbalanced metacharacter (`(`, `[`, `\`) makes the runtime
+  # raise PatternSyntaxException on the request path. Where the value is user-,
+  # config- or workspace-influenced this is wrong prefix/name handling plus an
+  # uncaught exception. Use Pattern.quote($RE) (or indexOf/startsWith/equals)
+  # when a literal match is intended.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.input-validation.nonliteral-regex-pattern-argument
+    message: >-
+      A non-literal, non-constant value is passed as the pattern argument of
+      String.replaceFirst/replaceAll/matches. That argument is compiled as a
+      REGEX, so a literal identifier (item/job name, file name, path, header or
+      config value containing `( ) + { } | . [ ]`) silently changes the match,
+      and an unbalanced metacharacter raises PatternSyntaxException at runtime
+      (CWE-625). Wrap the value in Pattern.quote() — or use a non-regex string
+      comparison (indexOf/startsWith/equals) — when a literal match is intended.
+    severity: ERROR
+    languages: [java]
+    metadata:
+      category: security
+      cwe: "CWE-625: Permissive Regular Expression"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/625.html
+        - https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/regex/Pattern.html#quote(java.lang.String)
+      source: semgrep-rule-gap
+      license: MIT
+    patterns:
+      - pattern-either:
+          - pattern: $STR.replaceFirst($RE, ...)
+          - pattern: $STR.replaceAll($RE, ...)
+          - pattern: $STR.matches($RE)
+      - pattern-not: $STR.replaceFirst("...", ...)
+      - pattern-not: $STR.replaceAll("...", ...)
+      - pattern-not: $STR.matches("...")
+      - metavariable-regex:
+          metavariable: $RE
+          regex: '^(?!.*Pattern\s*\.\s*quote)(?!(?:[A-Za-z_][A-Za-z0-9_]*\s*\.\s*)*[A-Z][A-Z0-9_]*\s*$).*$'
