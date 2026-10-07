@@ -1,0 +1,29 @@
+rules:
+  - id: codevigilant.python.security.ssh-host-key-verification-disabled
+    languages: [python]
+    mode: search
+    severity: HIGH
+    patterns:
+      - pattern-either:
+          - pattern: '"StrictHostKeyChecking=no"'
+          - pattern: '"StrictHostKeyChecking=off"'
+    message: |
+      SSH is invoked with host-key verification explicitly disabled
+      (`StrictHostKeyChecking=no`/`off`). Accepting any host key removes the
+      server authentication guarantee: a network-level attacker (rogue AP,
+      DNS/BGP hijack, or a hostile endpoint) can impersonate the remote host,
+      capture the credentials offered during the handshake, and forge any
+      output the tool derives from the connection. Enable strict host-key
+      checking and pin the expected host keys (or use a known_hosts file)
+      instead of disabling verification.
+    metadata:
+      category: security
+      cwe: "CWE-322: Key Exchange without Entity Authentication"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: [python, ssh]
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/322.html
+        - https://man.openbsd.org/ssh_config#StrictHostKeyChecking
+      source: independent security review
+      license: MIT
