@@ -1,0 +1,33 @@
+rules:
+  - id: codevigilant.java.jenkins.info-disclosure.formvalidation-exception-message
+    patterns:
+      - pattern-either:
+          - pattern: FormValidation.error("..." + $E.getMessage())
+          - pattern: FormValidation.error($E.getMessage())
+          - pattern: FormValidation.error("..." + $E.getMessage() + ...)
+          - pattern: FormValidation.warning("..." + $E.getMessage())
+          - pattern: FormValidation.error($E, $E.getMessage())
+          - pattern: FormValidation.warning($E, $E.getMessage())
+      - pattern-not: FormValidation.error("...")
+    message: |
+      Detected a Stapler form-validation handler that returns a raw exception
+      message to the HTTP caller (FormValidation.error with e.getMessage()).
+      Exception text from an outbound client/library call can disclose internal
+      hostnames, endpoint URLs, proxy configuration, credential identifiers or
+      stack-derived detail to a user who can reach the handler, and it is
+      returned to an attacker-influenced request in an unauthenticated or
+      low-privilege context (CWE-209). Return a fixed, generic message and log
+      the exception server-side.
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: MEDIUM
