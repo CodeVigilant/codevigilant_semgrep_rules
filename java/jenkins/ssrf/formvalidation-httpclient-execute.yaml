@@ -1,0 +1,55 @@
+rules:
+  - id: codevigilant.java.jenkins.ssrf.formvalidation-httpclient-execute
+    patterns:
+      - pattern-inside: |
+          public FormValidation $HANDLER(...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: $CLIENT.execute($REQUEST);
+          - pattern: $CLIENT.execute($REQUEST)
+          - pattern: $CLIENT.receiveMessage($REQ)
+          - pattern: $CLIENT.deleteMessageBatch($REQ)
+          - pattern: $CLIENT.deleteMessage($REQ)
+          - pattern: $CLIENT.sendMessage($REQ)
+          - pattern: $CLIENT.listQueues()
+      - pattern-not-inside: |
+          public FormValidation $HANDLER(...) {
+            ...
+            $Y.checkPermission($PERM);
+            ...
+          }
+    message: |-
+      Detected a Stapler form-validation / test-connection handler (a method
+      returning hudson.util.FormValidation, typically named doCheck*,
+      doValidate* or doTestConnection) that performs an outbound request -
+      through an HTTP client execute(...) call or through a remote service
+      client that consumes/mutates remote state (queue receive/delete/send or
+      list operations, e.g. a cloud SDK client) - without any permission
+      check. These handlers run on the Jenkins controller and are reachable by
+      any user who can access the descriptor URL (including anonymous users on
+      instances with anonymous read access). When the endpoint or credentials
+      derive from stored credentials, configuration or request parameters, an
+      attacker can make the controller perform credentialed requests against
+      endpoints they do not own and observe the outcome - a server-side
+      request forgery / credential-probing oracle from the controller into
+      internal or third-party networks (CWE-918/CWE-862), and a consuming call
+      such as a message receive also hides or destroys remote data the real
+      consumer needs (CWE-400). Add @RequirePOST/@POST, an explicit permission
+      check (e.g. Jenkins.get().checkPermission(Jenkins.ADMINISTER)), use a
+      non-destructive probe for validation, and validate the target
+      host/scheme against an allow-list with timeouts.
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/#server-side-request-forgery-ssrf
+        - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
