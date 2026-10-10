@@ -1,0 +1,52 @@
+rules:
+  - id: codevigilant.java.jenkins.csrf.statechange-without-requirepost
+    patterns:
+      - pattern-inside: |
+          public $RET $HANDLER(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $HANDLER
+          regex: ^do[A-Z]
+      - pattern-either:
+          - pattern: $OBJ.scheduleBuild2($DELAY, $CAUSE, $ACTIONS);
+          - pattern: $OBJ.scheduleBuild($DELAY);
+          - pattern: $OBJ.schedule2($DELAY);
+          - pattern: $QUEUE.schedule($TASK, $DELAY, $ACTION);
+          - pattern: $QUEUE.schedule($TASK, $DELAY);
+          - pattern: $EXEC.interrupt($RESULT);
+          - pattern: $QUEUE.setSorter($SORTER);
+          - pattern: $UTILS.cleanDirectory($DIR);
+          - pattern: $UTILS.deleteDirectory($DIR);
+          - pattern: $UTILS.deleteQuietly($DIR);
+          - pattern: $UTILS.forceDelete($DIR);
+      - pattern-not-inside: |
+          @RequirePOST
+          public $RET $HANDLER(...) {
+            ...
+          }
+    message: |
+      Detected a Stapler 'do*' handler that mutates Jenkins state (build
+      scheduling including Queue.schedule, executor interruption, queue sorter
+      replacement, or removal of stored files/directories by cleaning or
+      recursively deleting them) without the @RequirePOST annotation. Stapler
+      routes unannotated 'do*' methods for both GET and POST, and the CSRF
+      crumb is only enforced on POST requests, so a cross-site GET (e.g. an
+      <img> tag pointing at the handler URL) can trigger the state change with
+      the victim's credentials - destroying the stored data without any user
+      interaction. Annotate the handler with @RequirePOST so it rejects GET and
+      requires a valid crumb, and check the required permission inside the
+      handler.
+    metadata:
+      category: security
+      cwe: "CWE-352: Cross-Site Request Forgery"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://www.jenkins.io/doc/developer/security/csrf-protection/
+      source: independent security review
+      license: MIT
+    languages: [java]
+    mode: search
+    severity: HIGH
