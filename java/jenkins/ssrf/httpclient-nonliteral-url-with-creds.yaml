@@ -1,0 +1,52 @@
+rules:
+  # ============================================================================
+  # OUTBOUND HTTP REQUEST TO NON-LITERAL URL WITH CREDENTIALS ATTACHED
+  # (CWE-918 Server-Side Request Forgery / CWE-522 Credential Disclosure)
+  # Generic shape: an Apache HttpClient (HttpClients.custom()) attaches a
+  # UsernamePasswordCredentials via BasicCredentialsProvider to an outbound
+  # HttpGet/HttpPost whose URL is derived from a non-literal/config-driven
+  # value; or a Jersey client attaches its credentials via setCredentials() to
+  # a WebResource built with Client.resource(non-literal-url); or a git/VCS
+  # transport client binds a stored credential object to a repository URL via
+  # addCredentials(non-literal-url, credential) before fetching. If the URL is
+  # attacker/influenceable, the request (or the transport handshake) is
+  # delivered to an arbitrary host which then receives the attached credentials.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.ssrf.httpclient-nonliteral-url-with-creds
+    message: >-
+      An outbound client sends a request to a URL derived from a
+      non-literal (config/build-parameter influenced) value while credentials
+      are attached to the request or transport (an Apache HttpClient
+      UsernamePasswordCredentials / BasicCredentialsProvider, a Jersey
+      client's setCredentials(), or a git/VCS client whose credential object is
+      bound with addCredentials(url, credential) before fetching). If an
+      attacker can influence the URL, this becomes SSRF where the request, the
+      transport handshake, and the attached credentials are delivered to an
+      attacker-controlled host (CWE-918 / CWE-522). Validate that the target URL
+      is pinned to a trusted, literal endpoint and never attacker-influenceable.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: new HttpGet($URL)
+          - pattern: new HttpPost($URL)
+          - pattern: $CLIENT.resource($URL)
+          - pattern: $GIT.addCredentials($URL, $CRED)
+          - pattern: $GIT.addCredentials($URL, $CRED, ...)
+      - pattern-not: new HttpGet("...")
+      - pattern-not: new HttpPost("...")
+      - pattern-not: $CLIENT.resource("...")
+      - pattern-not: $GIT.addCredentials("...", $CRED)
+      - pattern-not: $GIT.addCredentials("...", $CRED, ...)
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/918.html
+        - www.jenkins.io/doc/developer/security/access-control/sandbox/
+      source: semgrep-rule-gap
+      license: MIT
