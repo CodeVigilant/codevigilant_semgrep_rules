@@ -1,0 +1,70 @@
+rules:
+  - id: codevigilant.java.jenkins.tls.inverted-flag-disables-verification
+    message: >-
+      Detected a TLS/SSL certificate-verification-disable flag appended to a
+      command/script builder inside an INVERTED boolean gate. When the gate
+      variable is a default-false config option (unchecked checkbox, opt-out
+      setting), certificate verification is disabled by default, so every
+      outbound TLS connection made by the generated command accepts any
+      certificate (CWE-295). An active network attacker on the path can then
+      decrypt the channel, steal credentials passed to the command, or forge
+      responses (e.g. fake security-scan results). Verification-disabling
+      flags should be opt-IN via a clearly-named positive check
+      (e.g. 'if (skipVerify)'), default to verification ON, and never be
+      gated by an inverted default-false boolean.
+    languages: [java]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Improper_Certificate_Validation
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if (!$BOOL) {
+                  $CMD.append($FLAG);
+              }
+          - pattern: |
+              if (!$BOOL)
+              {
+                  $CMD.append($FLAG);
+              }
+          - pattern: if (!$BOOL) $CMD.append($FLAG);
+      - metavariable-regex:
+          metavariable: $FLAG
+          regex: '"(--no-verify|--insecure|--no-check-certificate|--skip-verify|--ssl-no-verify|--insecure-ssl|-k)"'
+
+  - id: codevigilant.java.jenkins.tls.inverted-trust-all-helper
+    message: >-
+      Detected an HTTP-client TLS helper invoked with a negated boolean
+      (e.g. trustSelfSignCert(!flag) / setTrustAll(!flag)). When the flag
+      is a default-false "ignore SSL issues" option, the negation turns
+      certificate trust-all ON by default, so every outbound TLS connection
+      accepts attacker-issued certificates (CWE-295). Trust-all helpers
+      must be opt-in via the positive flag, never via !defaultFalse.
+    languages: [java]
+    severity: HIGH
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://owasp.org/www-community/vulnerabilities/Improper_Certificate_Validation
+        - https://www.jenkins.io/doc/developer/security/
+      source: independent security review
+      license: MIT
+    patterns:
+      - pattern-either:
+          - pattern: $CLIENT.trustSelfSignCert(!$FLAG)
+          - pattern: $CLIENT.setTrustAll(!$FLAG)
+          - pattern: $CLIENT.trustAllCertificates(!$FLAG)
+          - pattern: $CLIENT.setTrustAllCerts(!$FLAG)
