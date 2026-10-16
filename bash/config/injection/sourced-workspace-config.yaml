@@ -1,0 +1,29 @@
+rules:
+  - id: codevigilant.bash.config.injection.sourced-workspace-config
+    languages: [bash]
+    severity: HIGH
+    message: >-
+      A shell configuration file resolved from a workspace/repository directory
+      is dot-sourced (or `source`d). Whatever can write that file — a
+      checked-out repository, an unpacked archive, or a compromised process
+      sharing the directory — therefore runs commands with the privileges of
+      the tool that sources it, on its next start. Sourcing is
+      execute-before-validate; parse project-scoped config as data and validate
+      each key instead.
+    metadata:
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp:
+        - "A03:2021 - Injection"
+      technology: [bash]
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/94.html
+        - https://cwe.mitre.org/data/definitions/829.html
+      source: codevigilant
+      license: MIT
+    patterns:
+      - pattern-regex: >-
+          (?m)^[ \t]*(\.|source)[ \t]+"[^"]*\$(?:\{)?[A-Za-z_]*(?:WORKSPACE|WORK|WS|REPO|PROJECT|ROOT|PWD|CHECKOUT)[A-Za-z_]*(?:\})?[^"]*(?:\.env|\.conf|\.config|config|settings)[^"]*"
+      - pattern-not-regex: >-
+          ^[ \t]*(\.|source)[ \t]+"[^"]*\$(?:\{)?[A-Za-z_]*(?:WORKSPACE|WORK|WS|REPO|PROJECT|ROOT|PWD|CHECKOUT)[A-Za-z_]*(?:\})?/(?:lib|libexec|share|vendor|node_modules|dist)/[^"]*"
