@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.file_write.client_controlled.direct
+// codevigilant.php.wordpress.fileops.file_write.client_controlled.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,36 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Write — request-controlled destination path
+// ---------------------------------------------------------------------------
+
+function vuln_file_write_get_direct() {
+    // EXPECTED: fileops.file_write.client_controlled.direct, fileops.file_write.client_controlled.taint
+    file_put_contents($_GET['path'], 'payload');
+}
+
+function vuln_file_write_post_concat() {
+    // EXPECTED: fileops.file_write.client_controlled.direct, fileops.file_write.client_controlled.taint
+    file_put_contents(WP_CONTENT_DIR . '/cache/' . $_POST['cache_name'], $body);
+}
+
+function vuln_file_write_request_taint() {
+    // EXPECTED: fileops.file_write.client_controlled.taint
+    $target = ABSPATH . 'logs/' . $_REQUEST['log'];
+    file_put_contents($target, $line);
+}
+
+function vuln_file_write_copy_taint() {
+    // EXPECTED: fileops.file_write.client_controlled.taint
+    $dest = WP_CONTENT_DIR . '/exports/' . $_GET['dest'];
+    copy($src, $dest);
+}
+
+function vuln_file_write_wp_filesystem() {
+    // EXPECTED: fileops.file_write.client_controlled.direct, fileops.file_write.client_controlled.taint
+    global $wp_filesystem;
+    $wp_filesystem->put_contents($_POST['target'], $contents);
 }

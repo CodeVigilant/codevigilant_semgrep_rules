@@ -1,0 +1,100 @@
+rules:
+  # ============================================================================
+  # ARBITRARY FILE WRITE / FILE-CONTENT PLACEMENT (CWE-22 / CWE-73)
+  #
+  # WordPress plugins write files all the time: importers, exporters, log and
+  # cache writers, "save as" / template editors, report generators. When the
+  # destination path is taken from request input without basename() /
+  # sanitize_file_name(), an attacker chooses where the bytes land — over the
+  # web root, into wp-config.php, or into another user's upload directory.
+  #
+  # This is the write-side counterpart of the file-read rule (#210) and the
+  # file-deletion rule (#214); #201 only covers the move_uploaded_file upload
+  # path, so plain file_put_contents()/copy()/rename() writes had no rule.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.file_write.client_controlled.direct
+    patterns:
+      - pattern-either:
+          - pattern: file_put_contents(<... $_GET[$K] ...>, ...)
+          - pattern: file_put_contents(<... $_POST[$K] ...>, ...)
+          - pattern: file_put_contents(<... $_REQUEST[$K] ...>, ...)
+          - pattern: file_put_contents(<... $_COOKIE[$K] ...>, ...)
+          - pattern: copy($SRC, <... $_GET[$K] ...>)
+          - pattern: copy($SRC, <... $_POST[$K] ...>)
+          - pattern: copy($SRC, <... $_REQUEST[$K] ...>)
+          - pattern: rename($SRC, <... $_GET[$K] ...>)
+          - pattern: rename($SRC, <... $_POST[$K] ...>)
+          - pattern: rename($SRC, <... $_REQUEST[$K] ...>)
+          - pattern: $FS->put_contents(<... $_GET[$K] ...>, ...)
+          - pattern: $FS->put_contents(<... $_POST[$K] ...>, ...)
+          - pattern: $FS->put_contents(<... $_REQUEST[$K] ...>, ...)
+      - pattern-not: file_put_contents(<... basename(...) ...>, ...)
+      - pattern-not: file_put_contents(<... sanitize_file_name(...) ...>, ...)
+      - pattern-not: file_put_contents(<... wp_unique_filename(...) ...>, ...)
+      - pattern-not: file_put_contents(<... realpath(...) ...>, ...)
+      - pattern-not: $FS->put_contents(<... basename(...) ...>, ...)
+      - pattern-not: $FS->put_contents(<... sanitize_file_name(...) ...>, ...)
+      - pattern-not: copy($SRC, <... basename(...) ...>)
+      - pattern-not: copy($SRC, <... sanitize_file_name(...) ...>)
+      - pattern-not: rename($SRC, <... basename(...) ...>)
+      - pattern-not: rename($SRC, <... sanitize_file_name(...) ...>)
+    message: |
+      Arbitrary file write in WordPress: a request-controlled path is used as the destination of
+      file_put_contents() / copy() / rename() / WP_Filesystem::put_contents(). An attacker can
+      place attacker-controlled content at a path of their choosing — overwriting PHP files under
+      the web root, dropping a payload into an uploads directory, or clobbering wp-config.php
+      (CWE-22 / CWE-73). Reduce the request value to a bare file name with basename() and
+      sanitize_file_name(), anchor it to a fixed directory, and verify with realpath() that the
+      resolved destination stays inside that directory before writing.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.file-put-contents.php
+        - https://owasp.org/www-community/vulnerabilities/Path_Traversal
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.fileops.file_write.client_controlled.taint
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+    pattern-sanitizers:
+      - pattern: basename(...)
+      - pattern: sanitize_file_name(...)
+      - pattern: wp_unique_filename(...)
+    pattern-sinks:
+      - pattern-either:
+          - pattern: file_put_contents($SINK, ...)
+          - pattern: copy($SRC, $SINK)
+          - pattern: rename($SRC, $SINK)
+          - pattern: $FS->put_contents($SINK, ...)
+    message: |
+      Arbitrary file write in WordPress: a request-controlled value flows into the destination
+      path of a file-write sink (file_put_contents / copy / rename / WP_Filesystem::put_contents).
+      An attacker can traverse out of the intended directory and write attacker-controlled content
+      anywhere the web server can write (CWE-22 / CWE-73). Strip the path to a bare file name with
+      basename() and sanitize_file_name(), anchor it to a fixed directory, and confirm the resolved
+      destination stays inside that directory before writing.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/sanitize_file_name/
+        - https://www.php.net/manual/en/function.file-put-contents.php
+    languages: [php]
+    severity: ERROR

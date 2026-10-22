@@ -143,3 +143,30 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Arbitrary File Write — destination is sanitised or fixed
+// ---------------------------------------------------------------------------
+
+function safe_file_write_basename() {
+    if (!isset($_GET['file'])) { return; }
+    $path = WP_CONTENT_DIR . '/cache/' . basename($_GET['file']);
+    file_put_contents($path, 'ok');
+}
+
+function safe_file_write_sanitize_file_name() {
+    if (!isset($_POST['name'])) { return; }
+    $path = WP_CONTENT_DIR . '/cache/' . sanitize_file_name($_POST['name']);
+    file_put_contents($path, 'ok');
+}
+
+function safe_file_write_fixed_path() {
+    $path = WP_CONTENT_DIR . '/cache/known-report.txt';
+    file_put_contents($path, 'ok');
+}
+
+function safe_file_write_copy_basename() {
+    if (!isset($_GET['dest'])) { return; }
+    $dest = WP_CONTENT_DIR . '/exports/' . basename($_GET['dest']);
+    copy($src, $dest);
+}
