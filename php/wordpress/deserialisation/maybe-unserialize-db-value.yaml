@@ -1,0 +1,78 @@
+rules:
+  - id: codevigilant.php.wordpress.insecure_deserialization.db_column.maybe_unserialize
+    message: |
+      Unsafe deserialization of a stored database value. Values read back from a
+      row/result column (or through a helper that reads one) are frequently
+      written with attacker-controlled content by plugin code that persists
+      submitted data, and WordPress stores a serialized-looking string verbatim.
+      A visitor-supplied value such as O:... then instantiates PHP objects when
+      it is deserialized on read. Deserialize with objects disabled, for example:
+      unserialize( $value, array( 'allowed_classes' => false ) );
+      or use json_decode() for plugin-owned data.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2017 - Insecure Deserialization"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://www.php.net/manual/en/function.unserialize.php
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: Semgrep Rules License v1.0
+    languages: [php]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          # 1. direct: a $wpdb read handed straight to the deserializer
+          - patterns:
+              - pattern-either:
+                  - pattern: maybe_unserialize($WPDB->get_var(...))
+                  - pattern: maybe_unserialize($WPDB->get_row(...))
+                  - pattern: maybe_unserialize($WPDB->get_results(...))
+                  - pattern: maybe_unserialize($WPDB->get_col(...))
+                  - pattern: unserialize($WPDB->get_var(...), $OPTS)
+                  - pattern: unserialize($WPDB->get_row(...), $OPTS)
+                  - pattern: unserialize($WPDB->get_results(...), $OPTS)
+                  - pattern: unserialize($WPDB->get_col(...), $OPTS)
+          # 2. same function: the row is assigned first, then deserialized
+          - patterns:
+              - pattern-inside: |
+                  $V = $WPDB->$GETTER(...);
+                  ...
+              - metavariable-regex:
+                  metavariable: $GETTER
+                  regex: ^(get_row|get_results|get_var|get_col)$
+              - pattern-either:
+                  - pattern: maybe_unserialize($V->$COL)
+                  - pattern: maybe_unserialize($V[$I]->$COL)
+                  - pattern: maybe_unserialize($V['$COL'])
+                  - pattern: maybe_unserialize($V)
+                  - pattern: unserialize($V)
+          # 3. cross-function: a stored column of a row/result array deserialized
+          - patterns:
+              - pattern-either:
+                  - pattern: maybe_unserialize($X->$COL)
+                  - pattern: maybe_unserialize($X[$I]->$COL)
+                  - pattern: maybe_unserialize($X['$COL'])
+              - metavariable-regex:
+                  metavariable: $COL
+                  regex: ^(meta_value|option_value|form_value|report_value|serialized_value|payload)$
+          - patterns:
+              - pattern-either:
+                  - pattern: unserialize($X->$COL, $OPTS)
+                  - pattern: unserialize($X[$I]->$COL, $OPTS)
+                  - pattern: unserialize($X['$COL'], $OPTS)
+              - metavariable-regex:
+                  metavariable: $OPTS
+                  regex: ^(?!.*allowed_classes)
+              - pattern-not: unserialize($X->$COL, array('allowed_classes' => false))
+              - pattern-not: unserialize($X->$COL, ['allowed_classes' => false])
+              - pattern-not: unserialize($X[$I]->$COL, array('allowed_classes' => false))
+              - pattern-not: unserialize($X['$COL'], array('allowed_classes' => false))
+              - pattern-not: unserialize($X[$I]->$COL, ['allowed_classes' => false])
+              - pattern-not: unserialize($X['$COL'], ['allowed_classes' => false])
+              - metavariable-regex:
+                  metavariable: $COL
+                  regex: ^(meta_value|option_value|form_value|report_value|serialized_value|payload)$
