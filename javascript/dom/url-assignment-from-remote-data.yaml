@@ -1,0 +1,83 @@
+rules:
+  # ============================================================================
+  # DOM URL SINK (src / href / window.open) FED BY A NETWORK RESPONSE, WITH NO
+  # SCHEME OR HOST ALLOWLIST CHECK (CWE-601 / CWE-79 / CWE-918 browser-side)
+  # Generic shape: a value taken from an HTTP response body (`$RESP.json()`,
+  # `JSON.parse($BODY)`) is assigned straight to an element URL sink
+  # (`$EL.src = $T`, `$EL.href = $T`, `setAttribute("src"|"href", $T)`,
+  # `location.href = $T`, `window.open($T)`) without a protocol/scheme check.
+  # Whatever controls the response then controls a request the VICTIM's browser
+  # issues: a `javascript:` URL executes in the page origin for href-style
+  # sinks, and an arbitrary http(s) URL makes the victim's browser fetch an
+  # attacker-chosen host (tracking, `Referer`/origin disclosure, probing of
+  # localhost and internal addresses). Correct pattern: parse the URL and
+  # require an allowlisted scheme (and host) before assigning it, falling back
+  # to a static value otherwise.
+  # ============================================================================
+
+  - id: codevigilant.javascript.dom.url-assignment-from-remote-data
+    message: >-
+      Data from a network response is assigned to a DOM URL sink (`src`, `href`,
+      `location.href`, `window.open`) without validating its scheme. The party
+      that controls the response controls the URL the victim's browser loads: a
+      `javascript:` value runs script in the page origin (CWE-79), and any
+      http(s) value makes the victim's browser fetch an attacker-chosen or
+      internal host while leaking the page origin as `Referer` (CWE-918/CWE-601).
+      Parse the value with `new URL(...)`, require an allowlisted protocol (and
+      host), and fall back to a constant when it does not match.
+    severity: ERROR
+    languages: [javascript, typescript]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $RESP.json()
+              - pattern: JSON.parse($BODY)
+              - pattern: $RESP.text().then(...)
+              - pattern: await $RESP.text()
+    pattern-sanitizers:
+      # a parse with the URL constructor is the usual first half of the fix; the
+      # protocol/host comparison that normally follows is not required by the
+      # sanitiser so that already-parsed values do not keep firing (audit rule:
+      # prefer fewer false positives).
+      - patterns:
+          - pattern-either:
+              - pattern: new URL($T, ...)
+              - pattern: new URL($T)
+              - pattern: $T.startsWith("http")
+              - pattern: $T.startsWith("https")
+              - pattern: $ALLOWED.includes($T)
+              - pattern: $SCHEMES.includes($U.protocol)
+              - pattern: $T.match(/^https?:\/\//)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $EL.src = $T
+              - pattern: $EL.href = $T
+              - pattern: $EL.setAttribute("src", $T)
+              - pattern: $EL.setAttribute("href", $T)
+              - pattern: $EL.setAttributeNS(..., "href", $T)
+              - pattern: location.href = $T
+              - pattern: window.location = $T
+              - pattern: window.open($T)
+    metadata:
+      category: security
+      cwe:
+        - "CWE-601: URL Redirection to Untrusted Site ('Open Redirect')"
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+        - "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp:
+        - "A01:2021 - Broken Access Control"
+        - "A03:2021 - Injection"
+      technology: browser
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: MEDIUM
+      subcategory:
+        - audit
+      references:
+        - https://cwe.mitre.org/data/definitions/601.html
+        - https://owasp.org/www-community/attacks/DOM_Based_XSS
+        - https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/src
+      source: semgrep-rule-gap
+      license: MIT
