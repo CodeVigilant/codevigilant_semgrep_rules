@@ -6,6 +6,7 @@
 // Each function contains a vulnerable pattern that MUST trigger specific rules.
 //
 // EXPECTED_RULES:
+// codevigilant.php.wordpress.payments.payment_callback.unverified_signature
 // codevigilant.php.wordpress.sqli.getpost.query.direct
 // codevigilant.php.wordpress.sqli.getpost.query.taint
 // codevigilant.php.wordpress.sqli.getpost.query.deep_taint
@@ -234,4 +235,20 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Payment / webhook callback — order completed without signature verification
+// ---------------------------------------------------------------------------
+
+function vuln_payment_webhook_callback() {
+    // EXPECTED: payments.payment_callback.unverified_signature
+    $order = wc_get_order(absint($_POST['order_id']));
+    $order->payment_complete();
+}
+
+function vuln_payment_ipn_notification() {
+    // EXPECTED: payments.payment_callback.unverified_signature
+    $order = wc_get_order(absint($_REQUEST['id']));
+    $order->update_status('processing');
 }

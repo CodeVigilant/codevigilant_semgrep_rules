@@ -143,3 +143,16 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Payment / webhook callback — signature verified before order state changes
+// ---------------------------------------------------------------------------
+
+function safe_payment_webhook_callback() {
+    if (!isset($_POST['order_id'])) { return; }
+    $sig = isset($_SERVER['HTTP_X_SIGNATURE']) ? sanitize_text_field($_SERVER['HTTP_X_SIGNATURE']) : '';
+    $payload = file_get_contents('php://input');
+    if (!hash_equals(hash_hmac('sha256', $payload, CV_WEBHOOK_SECRET), $sig)) { return; }
+    $order = wc_get_order(absint($_POST['order_id']));
+    $order->payment_complete();
+}

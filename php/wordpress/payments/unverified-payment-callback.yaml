@@ -1,0 +1,192 @@
+rules:
+  - id: codevigilant.php.wordpress.payments.payment_callback.unverified_signature
+    patterns:
+      # Anchor on the whole callback function: only a function-scoped match can
+      # express "no signature verification ANYWHERE in the handler", which is what
+      # separates a forged-callback bug from a legitimately verified webhook.
+      - pattern-either:
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->payment_complete(...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                wc_payment_complete(...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->update_status('processing', ...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->update_status('completed', ...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->update_status("processing", ...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->update_status("completed", ...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->set_status('processing', ...);
+                ...
+              }
+          - pattern: |
+              function $F(...) {
+                ...
+                $ORDER->set_status('completed', ...);
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $F
+          regex: (?i)^.*(webhook|ipn|callback|notify|notification).*$
+      # Internal dispatchers that receive an ALREADY-VERIFIED payload object from
+      # their caller (Stripe's process_webhook_*( $notification )) are out of scope:
+      # a parameterised handler's verification lives in the dispatcher.
+      - pattern-not: |
+          function $F($P, ...) {
+            ...
+          }
+      # Statement-level verification
+      - pattern-not: |
+          function $F(...) {
+            ...
+            hash_hmac(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            hash_equals(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            openssl_verify(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            wp_hash(...);
+            ...
+          }
+      # Canonical `if (!hash_equals(...)) { reject }` layout
+      - pattern-not: |
+          function $F(...) {
+            ...
+            if (<... hash_equals(...) ...>) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            if (<... hash_hmac(...) ...>) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            if (<... openssl_verify(...) ...>) {
+              ...
+            }
+            ...
+          }
+      # Gateway-SDK / provider verification helpers
+      - pattern-not: |
+          function $F(...) {
+            ...
+            $OBJ->verify_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            $OBJ->validate_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            $OBJ->check_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            $OBJ->verify_webhook(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            $OBJ->constructEvent(...);
+            ...
+          }
+      # Plain-function verification helpers (a metavariable callee cannot be used
+      # here: an unbound `$FN(...)` in a negative pattern matches ANY call).
+      - pattern-not: |
+          function $F(...) {
+            ...
+            verify_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            verify_webhook_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            validate_signature(...);
+            ...
+          }
+      - pattern-not: |
+          function $F(...) {
+            ...
+            check_signature(...);
+            ...
+          }
+    message: |
+      Payment/webhook callback completes an order without verifying the provider signature.
+      A handler reachable from an unauthenticated request marks an order paid
+      (payment_complete, update_status('processing'|'completed'), set_status, wc_payment_complete)
+      while the handler performs no HMAC/signature verification, so a forged callback can mark
+      arbitrary orders as paid (CWE-345).
+      Verify the payload signature before touching order state and compare it with a timing-safe
+      function (hash_equals).
+    metadata:
+      category: security
+      cwe: "CWE-345: Insufficient Verification of Data Authenticity"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://docs.stripe.com/webhooks/signature
+        - https://developer.wordpress.org/apis/security/nonces/
+    languages: [php]
+    mode: search
+    severity: ERROR
