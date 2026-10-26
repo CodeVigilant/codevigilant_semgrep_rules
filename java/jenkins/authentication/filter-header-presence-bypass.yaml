@@ -1,0 +1,74 @@
+rules:
+  # ============================================================================
+  # AUTHENTICATION FILTER RELEASED BY MERE PRESENCE OF A REQUEST HEADER
+  # (CWE-287 Improper Authentication / CWE-306 Missing Authentication)
+  # Generic shape: inside a servlet Filter's doFilter(), an `if` condition built
+  # out of a *client-controlled request header* short-circuits to
+  # `chain.doFilter(...)` and returns, before (or instead of) the filter's
+  # credential verification. The header value is never validated, compared
+  # against a server-side secret, or checked for a trusted peer, so any
+  # unauthenticated caller that adds the header has the request forwarded
+  # downstream with no authentication performed at all.
+  # The second branch also covers the common indirection where the header
+  # presence test is factored into a helper predicate (`containsXHeader(req)`).
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.authentication.filter-header-presence-bypass
+    message: >-
+      A servlet Filter's doFilter() calls FilterChain.doFilter(...) and returns
+      whenever a client-supplied request header is merely present
+      ($REQ.getHeader($H) != null, or a helper predicate that tests it). No
+      value validation, server-side secret comparison, or trusted-peer check
+      gates that branch, so any unauthenticated caller can send the header and
+      have the request forwarded past the filter's authentication logic
+      (CWE-287/CWE-306). Do not key an authentication decision on the presence
+      of a request header: remove the bypass, or make it an opt-in
+      administrator setting that is disabled by default and bound to a
+      server-verified secret and/or a loopback-only peer.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if (<... $REQ.getHeader($H) != null ...>) {
+                ...
+                $CHAIN.doFilter(...);
+                ...
+                return;
+              }
+          - patterns:
+              - pattern: |
+                  if (<... $CALL($REQ) ...>) {
+                    ...
+                    $CHAIN.doFilter(...);
+                    ...
+                    return;
+                  }
+              - metavariable-regex:
+                  metavariable: $CALL
+                  regex: '(?i)^[a-z0-9_$]*header[a-z0-9_$]*$'
+      - pattern-not: |
+          if (<... $REQ.getHeader($H).equals($SECRET) ...>) {
+            ...
+            $CHAIN.doFilter(...);
+            ...
+            return;
+          }
+      - pattern-not: |
+          if (<... $REQ.getHeader($H) != null && $CHECK(...) ...>) {
+            ...
+            $CHAIN.doFilter(...);
+            ...
+            return;
+          }
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/287.html
+        - https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
+      source: semgrep-rule-gap
+      license: MIT
