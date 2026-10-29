@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.rce.template_injection.direct
+// codevigilant.php.wordpress.rce.template_injection.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,29 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// RCE — server-side template injection (Twig createTemplate / Timber)
+// ---------------------------------------------------------------------------
+
+function vuln_ssti_create_template_direct() {
+    // EXPECTED: rce.template_injection.direct
+    $twig = new \Twig\Environment(new \Twig\Loader\ArrayLoader());
+    return $twig->createTemplate($_POST['tpl']);
+}
+
+function vuln_ssti_timber_compile_string_direct() {
+    // EXPECTED: rce.template_injection.direct
+    return Timber::compile_string($_GET['body']);
+}
+
+function vuln_ssti_create_template_taint() {
+    // EXPECTED: rce.template_injection.taint
+    if (!isset($_REQUEST['tpl'])) {
+        return;
+    }
+    $source = $_REQUEST['tpl'];
+    $twig = new \Twig\Environment(new \Twig\Loader\ArrayLoader());
+    return $twig->createTemplate($source);
 }

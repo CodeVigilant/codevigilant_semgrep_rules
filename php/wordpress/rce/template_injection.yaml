@@ -1,0 +1,82 @@
+rules:
+  - id: codevigilant.php.wordpress.rce.template_injection.direct
+    patterns:
+      - pattern-either:
+          - pattern-inside: $ENGINE->createTemplate(...)
+          - pattern-inside: $ENGINE->create_template(...)
+          - pattern-inside: $ENGINE->render_string(...)
+          - pattern-inside: $ENGINE->renderString(...)
+          - pattern-inside: $LOADER->fromString(...)
+          - pattern-inside: Timber::compile_string(...)
+          - pattern-inside: \Timber\Timber::compile_string(...)
+      - pattern-either:
+          - pattern: $_GET[$KEY]
+          - pattern: $_POST[$KEY]
+          - pattern: $_REQUEST[$KEY]
+          - pattern: $_COOKIE[$KEY]
+    message: |
+      Detected server-side template injection (SSTI) in WordPress.
+      Request data is used as the template SOURCE passed to a template engine
+      (Twig createTemplate, Timber compile_string, ArrayLoader::fromString) instead of as
+      template DATA. An attacker who controls the template body can call arbitrary PHP
+      functions from the template and execute code.
+
+      Render a fixed template file and pass request data as context variables, e.g.
+      `$twig->render('form.twig', array('value' => sanitize_text_field($value)))`.
+      Never build a template from $_GET/$_POST/$_REQUEST/$_COOKIE content.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://portswigger.net/web-security/server-side-template-injection
+    languages: [php]
+    mode: search
+    severity: CRITICAL
+
+  - id: codevigilant.php.wordpress.rce.template_injection.taint
+    mode: taint
+    pattern-sources:
+      - pattern: $_GET
+      - pattern: $_POST
+      - pattern: $_REQUEST
+      - pattern: $_COOKIE
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $ENGINE->createTemplate(...)
+              - pattern: $ENGINE->create_template(...)
+              - pattern: $ENGINE->render_string(...)
+              - pattern: $ENGINE->renderString(...)
+              - pattern: $LOADER->fromString(...)
+              - pattern: Timber::compile_string(...)
+              - pattern: \Timber\Timber::compile_string(...)
+    pattern-sanitizers:
+      - pattern: sanitize_text_field(...)
+      - pattern: sanitize_textarea_field(...)
+      - pattern: wp_kses_post(...)
+      - pattern: esc_html(...)
+      - pattern: wp_strip_all_tags(...)
+      - pattern: intval(...)
+    message: |
+      Detected server-side template injection (SSTI) in WordPress.
+      Request data reaches the template SOURCE of a template engine (Twig createTemplate,
+      Timber compile_string, ArrayLoader::fromString), so attacker-controlled template
+      code is compiled and executed by PHP.
+
+      Pass request data as template CONTEXT instead of building the template from it, and
+      render a template file that ships with the plugin.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://portswigger.net/web-security/server-side-template-injection
+    languages: [php]
+    severity: CRITICAL
