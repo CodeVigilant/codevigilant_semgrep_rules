@@ -1,0 +1,109 @@
+rules:
+  # ============================================================================
+  # CAPTCHA VERIFICATION — token omitted means "verified"
+  # An omitted captcha token (empty field, absent parameter) must fail closed.
+  # A verification routine that returns early when the token is empty leaves the
+  # protected action ungated: the attacker just drops the token from the request.
+  # CWE-693 (protection mechanism failure) / CWE-287 adjacent.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.auth.captcha.verify_returns_on_missing_token
+    message: >-
+      Captcha verification returns without rejecting the request when the submitted
+      token is empty, so an attacker who omits the captcha token field skips the
+      challenge entirely and still reaches the protected form/endpoint (CWE-693).
+      Fail closed: throw or return false when the token is missing, and skip the check
+      only when captcha is not configured for the form.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          class $CLASS {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $CLASS
+          regex: (?i).*(captcha|turnstile).*
+      - pattern-either:
+          - pattern: |
+              if (empty($TOKEN)) {
+                ...
+                return;
+              }
+          - pattern: |
+              if (empty($TOKEN)) {
+                ...
+                return true;
+              }
+          - pattern: |
+              if (!$TOKEN) {
+                ...
+                return;
+              }
+          - pattern: |
+              if (!$TOKEN) {
+                ...
+                return true;
+              }
+      - metavariable-regex:
+          metavariable: $TOKEN
+          regex: (?i)^\$(token|captcha_token|recaptcha_token|captcha_response|recaptcha_response|g_recaptcha_response|hcaptcha_response|turnstile_response)$
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/
+        - https://developers.google.com/recaptcha/docs/verify
+
+  - id: codevigilant.php.wordpress.auth.captcha.verify_function_returns_on_missing_token
+    message: >-
+      Captcha verification function returns without rejecting the request when the
+      submitted token is empty, so omitting the token field skips the challenge
+      entirely (CWE-693). Fail closed: throw or return false when the token is
+      missing, and skip the check only when captcha is not configured.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-inside: |
+          function $FN(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $FN
+          regex: (?i).*(captcha|turnstile).*
+      - pattern-either:
+          - pattern: |
+              if (empty($TOKEN)) {
+                ...
+                return;
+              }
+          - pattern: |
+              if (empty($TOKEN)) {
+                ...
+                return true;
+              }
+          - pattern: |
+              if (!$TOKEN) {
+                ...
+                return;
+              }
+          - pattern: |
+              if (!$TOKEN) {
+                ...
+                return true;
+              }
+      - metavariable-regex:
+          metavariable: $TOKEN
+          regex: (?i)^\$(token|captcha_token|recaptcha_token|captcha_response|recaptcha_response|g_recaptcha_response|hcaptcha_response|turnstile_response)$
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      owasp: "A04:2021 - Insecure Design"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/plugins/security/
+        - https://developers.google.com/recaptcha/docs/verify

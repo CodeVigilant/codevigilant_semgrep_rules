@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.captcha.verify_returns_on_missing_token
+// codevigilant.php.wordpress.auth.captcha.verify_function_returns_on_missing_token
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,35 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Captcha verification — token omitted means "verified"
+// ---------------------------------------------------------------------------
+
+class Vulnerable_Captcha_Verifier {
+
+    public static function verify(?string $token = null) {
+        // EXPECTED: auth.captcha.verify_returns_on_missing_token
+        if (empty($token)) {
+            return;
+        }
+
+        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+            'body' => array('secret' => 'x', 'response' => $token),
+        ));
+
+        if (is_wp_error($response)) {
+            return;
+        }
+    }
+}
+
+function vuln_captcha_verify_token($token) {
+    // EXPECTED: auth.captcha.verify_function_returns_on_missing_token
+    if (empty($token)) {
+        return true;
+    }
+
+    return true;
 }

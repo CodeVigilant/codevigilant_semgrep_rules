@@ -143,3 +143,37 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Captcha — fail closed when the token is missing, early return only when the
+// captcha feature itself is not configured for the form
+// ---------------------------------------------------------------------------
+
+class Safe_Captcha_Verifier {
+
+    public static function verify(?string $token = null) {
+        if (empty($token)) {
+            throw new RuntimeException('Recaptcha is required.');
+        }
+
+        $response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+            'body' => array('secret' => 'x', 'response' => $token),
+        ));
+
+        if (is_wp_error($response)) {
+            throw new RuntimeException('reCAPTCHA verification failed');
+        }
+    }
+}
+
+function safe_captcha_verify_token($settings, $token) {
+    if (empty($settings)) {
+        return;
+    }
+
+    if (empty($token)) {
+        return false;
+    }
+
+    return true;
+}
