@@ -1,0 +1,50 @@
+rules:
+  # ============================================================================
+  # REMOTE PATH CONCATENATED INTO A WEBDAV / HTTP CLIENT URL WITHOUT CONTAINMENT
+  # (CWE-22 Path Traversal — remote-side scope escape)
+  # Generic shape: a directory/collection path (`$REL`) taken from configuration
+  # or a caller parameter is appended with plain string concatenation to a
+  # client base URL and handed to a WebDAV/HTTP client write or delete call
+  # (`$C.put($BASE + $REL …)`, `$C.delete($BASE + $REL)`). Nothing resolves or
+  # rejects `..` segments, so the emitted request URI walks out of the intended
+  # remote directory: the upload lands in a sibling collection, or the delete
+  # removes one, on the remote service. The correct pattern is to resolve the
+  # relative path against the base (`URI.resolve(...).normalize()`) and verify
+  # the result is still contained under the base URIs prefix, or to reject any
+  # segment equal to `..` (and its percent-encoded forms) before the call.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.path-traversal.remote-url-path-concat
+    message: >-
+      A path value is concatenated onto a remote base URL (`$BASE + $REL …`) and
+      passed to a WebDAV/HTTP client put/delete call. Because the value is not
+      normalised or checked for `..` segments, a configuration field or caller
+      parameter containing `../` emits a request URI outside the intended remote
+      directory — writing or recursively deleting collections belonging to
+      another tenant/project of the same remote service (CWE-22). Resolve the
+      relative path against the base URI, normalise it, and require the result
+      to remain under the base URI; reject `..` segments before the call.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $C.put($BASE + $REL + $NAME, ...)
+          - pattern: $C.put($BASE + $REL, ...)
+          - pattern: $C.delete($BASE + $REL)
+          - pattern: $C.createDirectory($BASE + $REL)
+      - metavariable-regex:
+          metavariable: $REL
+          regex: '^[A-Za-z_][A-Za-z0-9_.]*(\.[A-Za-z_][A-Za-z0-9_]*|\([^)]*\))*$'
+      - pattern-not-inside: |
+          if (<... $REL.contains("..") ...>) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/22.html
+        - https://www.rfc-editor.org/rfc/rfc3986#section-5.2.4
+      source: semgrep-rule-gap
+      license: MIT
