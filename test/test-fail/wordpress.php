@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.mail.header_injection.recipient.taint
+// codevigilant.php.wordpress.mail.header_injection.headers.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,32 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Email header injection — form field mapped into mail recipient / headers
+// (CWE-93; Patchstack/NVD CVE-2026-106648, CVE-2026-115303 class)
+// ---------------------------------------------------------------------------
+
+function vuln_mail_recipient_direct() {
+    // EXPECTED: mail.header_injection.recipient.taint
+    wp_mail($_POST['recipient'], 'Subject', 'Body');
+}
+
+function vuln_mail_recipient_sanitize_text_field() {
+    // EXPECTED: mail.header_injection.recipient.taint
+    // sanitize_text_field() preserves CR/LF, so it does not stop header injection.
+    $to = sanitize_text_field($_POST['email']);
+    wp_mail($to, 'Subject', 'Body');
+}
+
+function vuln_mail_headers_concat() {
+    // EXPECTED: mail.header_injection.headers.taint
+    $headers = 'Reply-To: ' . $_POST['reply_to'];
+    wp_mail('admin@example.com', 'Subject', 'Body', $headers);
+}
+
+function vuln_mail_native_header_injection() {
+    // EXPECTED: mail.header_injection.recipient.taint, mail.header_injection.headers.taint
+    mail($_POST['to'], 'Subject', 'Body', 'From: ' . $_POST['from']);
 }

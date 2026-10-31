@@ -1,0 +1,91 @@
+rules:
+  - id: codevigilant.php.wordpress.mail.header_injection.recipient.taint
+    mode: taint
+    languages: [php]
+    severity: HIGH
+    message: |
+      Request-controlled data reaches the recipient argument of wp_mail() or mail().
+      Contact-form notifications that map a submitted field into To/Reply-To/From/Cc must
+      validate it with sanitize_email() or is_email() first. sanitize_text_field() is NOT
+      sufficient: it preserves CR/LF, so an unauthenticated submitter can append extra
+      recipients (Bcc/Cc) and relay attacker-composed mail from the site's own domain.
+    metadata:
+      category: security
+      cwe: "CWE-93: Improper Neutralization of CRLF Sequences"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_mail/
+        - https://owasp.org/www-community/attacks/CRLF_Injection
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET
+          - pattern: $_POST
+          - pattern: $_REQUEST
+          - pattern: $_COOKIE
+          - pattern: $_SERVER
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_mail($TO, ...)
+              - pattern: mail($TO, ...)
+          - focus-metavariable: $TO
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: sanitize_email(...)
+          - pattern: is_email(...)
+          - patterns:
+              - pattern-inside: |
+                  if (is_email($CAND)) { ... }
+              - pattern: $CAND
+          - patterns:
+              - pattern-inside: |
+                  if (!is_email($CAND)) { return; }
+              - pattern: $CAND
+
+  - id: codevigilant.php.wordpress.mail.header_injection.headers.taint
+    mode: taint
+    languages: [php]
+    severity: HIGH
+    message: |
+      Request-controlled data is concatenated into the additional-headers argument of
+      wp_mail() or mail(). Without sanitize_email()/is_email() validation (or an explicit
+      CR/LF strip) an unauthenticated submitter can inject arbitrary headers such as Bcc
+      and Cc and relay mail from the site's domain.
+    metadata:
+      category: security
+      cwe: "CWE-93: Improper Neutralization of CRLF Sequences"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_mail/
+        - https://owasp.org/www-community/attacks/CRLF_Injection
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET
+          - pattern: $_POST
+          - pattern: $_REQUEST
+          - pattern: $_COOKIE
+          - pattern: $_SERVER
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: wp_mail($TO, $SUBJECT, $BODY, $HEADERS)
+              - pattern: wp_mail($TO, $SUBJECT, $BODY, $HEADERS, ...)
+              - pattern: mail($TO, $SUBJECT, $BODY, $HEADERS)
+              - pattern: mail($TO, $SUBJECT, $BODY, $HEADERS, ...)
+          - focus-metavariable: $HEADERS
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: sanitize_email(...)
+          - pattern: is_email(...)
+          - patterns:
+              - pattern-inside: |
+                  if (is_email($CAND)) { ... }
+              - pattern: $CAND
+          - patterns:
+              - pattern-inside: |
+                  if (!is_email($CAND)) { return; }
+              - pattern: $CAND

@@ -143,3 +143,23 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Email header injection — validated recipients stay silent
+// ---------------------------------------------------------------------------
+
+function safe_mail_sanitized_recipient() {
+    $to = sanitize_email($_POST['email']);
+    wp_mail($to, 'Subject', 'Body');
+}
+
+function safe_mail_constant_recipient() {
+    wp_mail(get_option('admin_email'), 'Subject', 'Body', 'Reply-To: ' . get_option('admin_email'));
+}
+
+function safe_mail_validated_guard() {
+    $to = sanitize_email($_POST['email']);
+    if (is_email($to)) {
+        wp_mail($to, 'Subject', 'Body');
+    }
+}
