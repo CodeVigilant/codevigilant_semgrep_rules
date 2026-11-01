@@ -1,0 +1,48 @@
+rules:
+  # ============================================================================
+  # FIXED-NAME FILE UNDER java.io.tmpdir (CWE-377 Insecure Temporary File,
+  # CWE-59 symlink follow)
+  # Generic shape: a path inside the process temp directory is built from a
+  # CONSTANT file name instead of an unpredictable one. The name is therefore
+  # guessable and can be pre-created by any other local account that can write
+  # to the temp dir (usually world-writable). A later open of that path with a
+  # plain FileOutputStream / PrintWriter / FileWriter follows an attacker-placed
+  # symlink (no O_NOFOLLOW, no O_EXCL), so the write lands on a file of the
+  # attacker's choosing with the privileges of the service process, and the
+  # fixed name also permits a plain TOCTOU swap between check and use.
+  # Correct pattern: Files.createTempFile(...) / File.createTempFile(...)
+  # (unpredictable name + O_EXCL semantics) or a per-instance private directory
+  # with 0700 permissions.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.file-write.fixed-tmp-path.symlink-follow
+    message: >-
+      A file path inside the process temp directory is built from a fixed
+      literal file name (System.getProperty("java.io.tmpdir") plus a constant).
+      Any other local account can pre-create that exact path, typically as a
+      symlink to a file it cannot otherwise write, and the subsequent open
+      follows it under the service process's privileges (CWE-377/CWE-59). Use
+      Files.createTempFile()/File.createTempFile() so the name is unpredictable
+      and created atomically, or keep the file in a private 0700 directory.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: new File(System.getProperty("java.io.tmpdir"), $NAME)
+          - pattern: new File(System.getProperty("java.io.tmpdir") + $SEP + $NAME)
+          - pattern: System.getProperty("java.io.tmpdir") + $SEP + $NAME
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: '^\s*"[^"$]*"\s*$'
+    metadata:
+      category: security
+      cwe: "CWE-377: Insecure Temporary File"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/377.html
+        - https://cwe.mitre.org/data/definitions/59.html
+        - https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Files.html#createTempFile(java.nio.file.Path,java.lang.String,java.lang.String,java.nio.file.attribute.FileAttribute...)
+      source: semgrep-rule-gap
+      license: MIT
