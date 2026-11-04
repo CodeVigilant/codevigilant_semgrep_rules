@@ -1,0 +1,28 @@
+rules:
+  - id: codevigilant.javascript.xss.sanitizer.allow-inline-event-attrs
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: >-
+      HTML sanitiser allow-list includes inline event-handler attributes (on*)
+      and/or the element carries arbitrary URL-bearing attributes. Inline
+      handler attributes are preserved by the sanitiser and execute attacker
+      JavaScript when the sanitised markup is inserted into the DOM. Remove
+      handler attributes from the allow-list and restrict URI schemes to
+      http/https/mailto.
+    metadata:
+      cwe:
+        - "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - javascript
+        - dom
+      confidence: HIGH
+      references:
+        - https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+        - https://github.com/cure53/DOMPurify
+      source: codevigilant
+      license: Semgrep Rules License v1.0
+    patterns:
+      - pattern-regex: '(?s)(ALLOWED_ATTR|ALLOWED_ATTRIBUTES|allowedAttributes|allowAttributes|ALLOWED_TAGS)\s*:\s*\[[^\]]*["'']on[a-z]+["'']'
+      - pattern-not-regex: '(?s)(ALLOWED_ATTR|ALLOWED_ATTRIBUTES|allowedAttributes|allowAttributes|ALLOWED_TAGS)\s*:\s*\[\s*\]'
