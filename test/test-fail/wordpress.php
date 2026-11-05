@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.nonce.optional_verify_fail_open
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,20 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Optional nonce verification — REST permission callback fails open
+// Verifies the nonce only when the client sent one, then grants access.
+// ---------------------------------------------------------------------------
+
+function vuln_optional_nonce_fail_open($request) {
+    // EXPECTED: auth.nonce.optional_verify_fail_open
+    $nonce = $request->get_header('X-WP-Nonce');
+    if ($nonce) {
+        if (!wp_verify_nonce($nonce, 'wp_rest')) {
+            return new WP_Error('bad_nonce', 'Invalid token.', array('status' => 403));
+        }
+    }
+    return true;
 }
