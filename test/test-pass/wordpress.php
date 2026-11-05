@@ -143,3 +143,27 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Authorization — nonce verified unconditionally (deny by default)
+// ---------------------------------------------------------------------------
+
+function safe_rest_permission_unconditional_nonce($request) {
+    $nonce = $request->get_header('X-WP-Nonce');
+    if (!wp_verify_nonce($nonce, 'wp_rest')) {
+        return new WP_Error('bad_nonce', 'Invalid token.', array('status' => 403));
+    }
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// Authorization — capability check gates the route, nonce is optional
+// ---------------------------------------------------------------------------
+
+function safe_rest_permission_capability_gated($request) {
+    $cap = apply_filters('cegg_rest_capability', 'edit_posts');
+    if (!current_user_can($cap)) {
+        return new WP_Error('forbidden', 'Not allowed.', array('status' => 403));
+    }
+    return true;
+}

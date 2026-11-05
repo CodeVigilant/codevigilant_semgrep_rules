@@ -1,0 +1,67 @@
+rules:
+  # ============================================================================
+  # REST / AJAX AUTHORISATION — nonce verification is OPTIONAL (fails open)
+  # ============================================================================
+  #
+  # A permission callback that verifies a nonce only *if the client sent one*
+  # and then returns true (authorisation granted) is not an authorisation
+  # control: the check is skipped entirely by simply omitting the header.
+  # Any unauthenticated visitor reaches the route callback, and every
+  # publish-status / ownership / capability decision the callback was supposed
+  # to enforce is bypassed.
+  #
+  # Vulnerable shape (CVE-2026-119751, Content Egg < 12.1.0):
+  #
+  #   public static function permission_check(\WP_REST_Request $request) {
+  #       $nonce = $request->get_header('X-WP-Nonce');
+  #       if ($nonce) {
+  #           if (!wp_verify_nonce($nonce, 'wp_rest')) {
+  #               return new WP_Error('invalid_nonce', __('Invalid token.'), array('status' => 403));
+  #           }
+  #       }
+  #       return true;          // <- reached when no nonce was supplied
+  #   }
+  #
+  # CWE-863: Incorrect Authorization
+
+  - id: codevigilant.php.wordpress.auth.nonce.optional_verify_fail_open
+    message: |
+      A nonce is verified only when the request carries one, and the function
+      returns true (authorisation granted) when it does not. Omitting the nonce
+      header/parameter skips the check entirely, so every request the callback
+      was meant to gate - including unauthenticated ones - reaches the handler
+      and inherits whatever it does (non-public post/meta/option reads, state
+      writes). Move the nonce/capability check out of the presence guard and
+      deny by default: verify the nonce unconditionally, or gate the route with
+      current_user_can() for the capability the operation requires.
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern: |
+          if ($COND) {
+            ...
+            if (!wp_verify_nonce(...)) { ... }
+            ...
+          }
+          ...
+          return true;
+      - metavariable-regex:
+          metavariable: $COND
+          regex: (?i).*nonce.*
+      # A capability check wrapping the same block already denies by default.
+      - pattern-not-inside: |
+          if (current_user_can(...)) { ... }
+      - pattern-not-inside: |
+          if (!current_user_can(...)) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-863: Incorrect Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/rest-api/extending-the-rest-api/adding-custom-endpoints/
+        - https://developer.wordpress.org/apis/security/nonces/
+        - https://developer.wordpress.org/plugins/security/authorization/
+      source: CodeVigilant
+      license: GPL-2.0-or-later
