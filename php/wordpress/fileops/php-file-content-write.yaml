@@ -1,0 +1,139 @@
+rules:
+  # ============================================================================
+  # REQUEST-CONTROLLED CONTENT WRITTEN INTO AN EXECUTABLE PHP FILE (CWE-94 / CWE-73)
+  #
+  # WordPress plugins regenerate PHP files at runtime: error-page and option
+  # caches (`<?php return array(...);`), settings/template dumps, i18n rebuilds.
+  # When the bytes written into that .php file come from the request (a header,
+  # a $_GET/$_POST/$_REQUEST/$_COOKIE value), the attacker is authoring
+  # server-side code: the next include/require executes it.
+  #
+  # Distinct from its siblings, so do not collapse them:
+  #   - #219 arbitrary file write  -> request input in the DESTINATION path
+  #   - #201 upload destination    -> move_uploaded_file() target
+  #   - #210 arbitrary file read   -> request input in a read path
+  # Here the destination is the plugin's own .php file and the attacker
+  # controls the CONTENT that is executed later.
+  #
+  # Live shape: CVE-2026-121491 (fiber-admin < 4.0.1) — an unescaped request
+  # header reaches file_put_contents(WP_CONTENT_DIR . '/db-error.php', ...);
+  # 4.0.1 fixed it by adding a strip_php_tags() sanitiser to the content.
+  #
+  # The .php suffix has to be visible on the destination expression (inline
+  # concatenation, or a variable assigned from one in the same block): a
+  # request value written into a .log/.csv/.json file is not code execution.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.file_write.request_content.direct
+    patterns:
+      - pattern-either:
+          # (a) destination built inline:
+          #     file_put_contents(WP_CONTENT_DIR . '/db-error.php', $_POST['x'])
+          - patterns:
+              - pattern-either:
+                  - pattern: file_put_contents($PATH, <... $_GET[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_POST[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_REQUEST[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_COOKIE[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_SERVER[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_GET[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_POST[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_REQUEST[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_SERVER[$K] ...>)
+              - metavariable-regex:
+                  metavariable: $PATH
+                  regex: (?i).*\.php.*
+          # (b) destination assigned just above from a .php expression:
+          #     $cache_file = WP_CONTENT_DIR . '/cache/options.php';
+          #     file_put_contents($cache_file, $_POST['cache_value']);
+          - patterns:
+              - pattern-inside: |
+                  $PATH = $VAL;
+                  ...
+              - pattern-either:
+                  - pattern: file_put_contents($PATH, <... $_GET[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_POST[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_REQUEST[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_COOKIE[$K] ...>)
+                  - pattern: file_put_contents($PATH, <... $_SERVER[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_GET[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_POST[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_REQUEST[$K] ...>)
+                  - pattern: $FS->put_contents($PATH, <... $_SERVER[$K] ...>)
+              - metavariable-regex:
+                  metavariable: $VAL
+                  regex: (?i).*\.php.*
+    message: |
+      Request-controlled content written into a PHP file in WordPress: the bytes
+      of $_GET / $_POST / $_REQUEST / $_COOKIE / $_SERVER reach the content
+      argument of file_put_contents() / WP_Filesystem::put_contents() while the
+      destination is a .php file. A plugin that regenerates PHP (error page,
+      option cache, settings dump) lets an attacker write executable
+      server-side code, which the next include/require runs (CWE-94 / CWE-73).
+      Never build PHP source from request data; persist settings with the
+      Options API (update_option / wp_json_encode to a non-executable file),
+      and strip <?php / ?> from any HTML that must be written.
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://www.php.net/manual/en/function.file-put-contents.php
+        - https://owasp.org/www-community/attacks/Code_Injection
+        - https://developer.wordpress.org/apis/security/data-validation/
+    languages: [php]
+    mode: search
+    severity: ERROR
+
+  - id: codevigilant.php.wordpress.fileops.file_write.request_content.taint
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_GET[...]
+          - pattern: $_POST[...]
+          - pattern: $_REQUEST[...]
+          - pattern: $_COOKIE[...]
+          - pattern: $_SERVER[...]
+    pattern-sinks:
+      # destination inline in the call
+      - patterns:
+          - pattern-either:
+              - pattern: file_put_contents($PATH, $DATA)
+              - pattern: $FS->put_contents($PATH, $DATA)
+          - metavariable-regex:
+              metavariable: $PATH
+              regex: (?i).*\.php.*
+          - focus-metavariable: $DATA
+      # destination assigned just above from a .php expression
+      - patterns:
+          - pattern-inside: |
+              $PATH = $VAL;
+              ...
+          - pattern-either:
+              - pattern: file_put_contents($PATH, $DATA)
+              - pattern: $FS->put_contents($PATH, $DATA)
+          - metavariable-regex:
+              metavariable: $VAL
+              regex: (?i).*\.php.*
+          - focus-metavariable: $DATA
+    message: |
+      Request-controlled content written into a PHP file in WordPress: data read
+      from the request reaches the content argument of file_put_contents() /
+      WP_Filesystem::put_contents() whose destination is a .php file. Escaping
+      does not help — the file is executed as PHP afterwards, so a request
+      value such as a header can become a webshell. Persist settings with the
+      Options API instead, and strip <?php / ?> from written HTML
+      (CWE-94 / CWE-73).
+    metadata:
+      category: security
+      cwe: "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://www.php.net/manual/en/function.file-put-contents.php
+    languages: [php]
+    severity: ERROR
