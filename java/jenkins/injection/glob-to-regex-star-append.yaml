@@ -1,0 +1,39 @@
+rules:
+  - id: codevigilant.java.jenkins.injection.glob-to-regex-star-append
+    languages:
+      - java
+    severity: ERROR
+    message: >-
+      A regular expression is assembled by translating wildcard/glob syntax: the fragment
+      ".*" is appended to a builder while iterating over the pattern fragments. Joining
+      unanchored ".*" segments between literals produces a backtracking-heavy expression,
+      so when the resulting pattern is compiled and matched against text whose content is
+      supplied by an untrusted party (a name, a path, a ref, a header), one match attempt
+      can consume seconds to minutes of CPU and blocks the calling thread.
+      Match globs with a linear algorithm instead (split on "*" and compare the segments
+      in order) or enforce a subject-length bound and a matching time budget.
+    metadata:
+      category: security
+      cwe:
+        - "CWE-1333: Inefficient Regular Expression Complexity"
+      owasp:
+        - A03:2021 - Injection
+      technology:
+        - java
+        - jenkins
+      confidence: LOW
+      impact: MEDIUM
+      likelihood: LOW
+      subcategory:
+        - vuln
+      references:
+        - https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+        - https://en.wikipedia.org/wiki/ReDoS
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: Semgrep Rules License v1.0 (https://semgrep.dev/legal/rules-license)
+    patterns:
+      - pattern-inside: |
+          for ($TYPE $VAR : $ITERABLE) {
+            ...
+          }
+      - pattern: $BUILDER.append(".*");
