@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.file_write.request_content.direct
+// codevigilant.php.wordpress.fileops.file_write.request_content.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,32 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Request-controlled content written into an executable PHP file (CWE-94)
+// ---------------------------------------------------------------------------
+
+function vuln_php_file_content_write_inline() {
+    // EXPECTED: fileops.file_write.request_content.direct
+    // EXPECTED: fileops.file_write.request_content.taint
+    if (!isset($_SERVER['HTTP_X_FORWARDED_HOST'])) { return; }
+    $html = '<p>' . $_SERVER['HTTP_X_FORWARDED_HOST'] . '</p>';
+    file_put_contents(WP_CONTENT_DIR . '/db-error.php', '<?php http_response_code(500); ?>' . $html);
+}
+
+function vuln_php_file_content_write_assigned() {
+    // EXPECTED: fileops.file_write.request_content.direct
+    // EXPECTED: fileops.file_write.request_content.taint
+    if (!isset($_POST['cache_value'])) { return; }
+    $cache_file = WP_CONTENT_DIR . '/cache/plugin-options.php';
+    $body = "<?php\nreturn '" . $_POST['cache_value'] . "';\n";
+    file_put_contents($cache_file, $body);
+}
+
+function vuln_php_file_content_write_direct() {
+    // EXPECTED: fileops.file_write.request_content.direct
+    // EXPECTED: fileops.file_write.request_content.taint
+    if (!isset($_POST['tpl'])) { return; }
+    file_put_contents(WP_CONTENT_DIR . '/cache/template.php', $_POST['tpl']);
 }

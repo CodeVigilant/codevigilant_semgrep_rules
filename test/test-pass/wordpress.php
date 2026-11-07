@@ -143,3 +143,15 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// File writes — request data only reaches non-executable destinations
+// ---------------------------------------------------------------------------
+
+function safe_file_write_trace_log() {
+    global $wp_filesystem;
+    if (!isset($_SERVER['HTTP_X_TRACE'])) { return; }
+    $log_file = WP_CONTENT_DIR . '/uploads/debug.log';
+    $line = gmdate('c') . ' ' . sanitize_text_field($_SERVER['HTTP_X_TRACE']) . "\n";
+    $wp_filesystem->put_contents($log_file, $line);
+}
