@@ -1,0 +1,44 @@
+rules:
+  - id: codevigilant.java.jenkins.authz.cross-item-schedule.missing-permission-check
+    message: >-
+      A queue task is submitted with $QUEUE.schedule(...)/schedule2(...) and no
+      checkPermission()/hasPermission() call appears in the enclosing method. Queue
+      submission is not authorized by Jenkins, so any user who can reach this code path
+      can start a task belonging to an item they have no BUILD permission on (CWE-862).
+      Resolve the target item and require `targetItem.checkPermission(Item.BUILD)` for
+      the acting authentication before scheduling.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $QUEUE.schedule($TASK, ...)
+          - pattern: $QUEUE.schedule2($TASK, ...)
+      - pattern-not: $QUEUE.schedule(this, ...)
+      - pattern-not: $QUEUE.schedule2(this, ...)
+      - pattern-inside: |
+          $RET $METHOD(...) {
+            ...
+          }
+      - pattern-not-inside: |
+          $RET2 $METHOD2(...) {
+            ...
+            $ACL.checkPermission(...);
+            ...
+          }
+      - pattern-not-inside: |
+          $RET3 $METHOD3(...) {
+            ...
+            $ACL.hasPermission(...);
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/862.html
+        - https://www.jenkins.io/doc/developer/security/access-control/
+      source: semgrep-rule-gap
+      license: MIT
