@@ -143,3 +143,12 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Zip Slip — PclZip extraction WITH the directory restriction option
+// ---------------------------------------------------------------------------
+
+function safe_zip_slip_pclzip_restricted($archive_path, $restore_dir) {
+    $zip = new PclZip($archive_path);
+    $zip->extract(PCLZIP_OPT_PATH, $restore_dir, PCLZIP_OPT_EXTRACT_DIR_RESTRICTION, true);
+}
