@@ -1,0 +1,39 @@
+rules:
+  # ============================================================================
+  # ZIP SLIP / ARCHIVE EXTRACTION TRAVERSAL (CWE-22)
+  #
+  # PclZip is the zip implementation bundled with WordPress core
+  # (wp-admin/includes/class-pclzip.php) and shipped inside backup/migration
+  # plugins.  PclZip::extract() honours entry names verbatim unless the caller
+  # passes PCLZIP_OPT_EXTRACT_DIR_RESTRICTION, so an archive containing
+  # "../" entry names writes outside the intended directory.
+  #
+  # Vendor fix for CVE-2026-127050 (Backup Migration < 2.1.8) adds exactly that
+  # option to the restore-fallback extract() call, which is what this rule keys on.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.archive_extract.pclzip_no_dir_restriction
+    patterns:
+      - pattern-either:
+          - pattern: $Z->extract(PCLZIP_OPT_PATH, ...)
+          - pattern: $Z->extract(..., PCLZIP_OPT_PATH, ...)
+      - pattern-not: $Z->extract(..., PCLZIP_OPT_EXTRACT_DIR_RESTRICTION, ...)
+    message: |
+      Zip Slip: PclZip::extract() is called without PCLZIP_OPT_EXTRACT_DIR_RESTRICTION.
+      Archive entry names containing "../" sequences are written relative to the
+      extraction root, letting a crafted archive drop a PHP file outside the
+      intended directory (arbitrary file write -> RCE).
+      Pass PCLZIP_OPT_EXTRACT_DIR_RESTRICTION (and validate each entry name) before
+      extracting untrusted archives.
+    metadata:
+      category: security
+      cwe: "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://www.cve.org/CVERecord?id=CVE-2026-127050
+        - https://developer.wordpress.org/reference/functions/unzip_file/
+    languages: [php]
+    mode: search
+    severity: HIGH

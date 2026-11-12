@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.archive_extract.pclzip_no_dir_restriction
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,15 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Zip Slip — PclZip extraction without PCLZIP_OPT_EXTRACT_DIR_RESTRICTION
+// Shape of CVE-2026-127050 (Backup Migration < 2.1.8 PclZip restore fallback)
+// ---------------------------------------------------------------------------
+
+function vuln_zip_slip_pclzip_restore_fallback($archive_path, $restore_dir) {
+    // EXPECTED: fileops.archive_extract.pclzip_no_dir_restriction
+    $zip = new PclZip($archive_path);
+    $zip->extract(PCLZIP_OPT_PATH, $restore_dir);
 }
