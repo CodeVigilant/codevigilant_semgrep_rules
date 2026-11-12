@@ -143,3 +143,55 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Authentication — token verified before a session is created
+// ---------------------------------------------------------------------------
+
+function safe_auth_token_verified_before_session() {
+    if (!isset($_POST['token'])) {
+        return;
+    }
+    $token = sanitize_text_field($_POST['token']);
+    if (!hash_equals(wp_hash($token), (string) get_option('cv_shared_secret'))) {
+        return;
+    }
+    $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+    $user  = get_user_by('email', $email);
+    if ($user) {
+        wp_set_auth_cookie($user->ID);
+    }
+}
+
+function safe_auth_token_gate_with_inner_verification() {
+    if (!isset($_POST['jwt'])) {
+        return;
+    }
+    $jwt = sanitize_text_field($_POST['jwt']);
+    if (!empty($jwt)) {
+        if (!hash_equals(wp_hash($jwt), (string) get_option('cv_jwt_secret'))) {
+            return;
+        }
+        $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+        $user  = get_user_by('email', $email);
+        if ($user) {
+            wp_set_current_user($user->ID);
+        }
+    }
+}
+
+function safe_auth_oauth_code_exchange() {
+    if (!isset($_GET['token'])) {
+        return;
+    }
+    $token = sanitize_text_field($_GET['token']);
+    if (!empty($token)) {
+        $response = wp_remote_post('https://idp.example.com/exchange', array('body' => array('token' => $token)));
+        $claims   = json_decode(wp_remote_retrieve_body($response), true);
+        $email    = isset($claims['email']) ? sanitize_email($claims['email']) : '';
+        $user     = get_user_by('email', $email);
+        if ($user) {
+            wp_set_auth_cookie($user->ID);
+        }
+    }
+}

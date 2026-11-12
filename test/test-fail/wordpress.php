@@ -34,6 +34,8 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.session.unverified_token
+// codevigilant.php.wordpress.auth.session.truthy_token_gate
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +236,30 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Authentication — session created from an unverified token (CWE-287)
+// ---------------------------------------------------------------------------
+
+function vuln_auth_session_unverified_token() {
+    // EXPECTED: auth.session.unverified_token
+    $token = $_POST['token'];
+    $email = $_POST['email'];
+    if (!empty($token)) {
+        $user = get_user_by('email', $email);
+        if ($user) {
+            wp_set_auth_cookie($user->ID);
+            wp_set_current_user($user->ID);
+        }
+    }
+}
+
+function vuln_auth_session_truthy_token_gate() {
+    // EXPECTED: auth.session.truthy_token_gate
+    $jwt = $_POST['jwt'];
+    if ($jwt) {
+        $user = get_user_by('email', sanitize_email($_POST['email']));
+        wp_set_auth_cookie($user->ID);
+    }
 }

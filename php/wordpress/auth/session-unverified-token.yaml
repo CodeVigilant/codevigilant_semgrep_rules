@@ -1,0 +1,503 @@
+rules:
+  # ============================================================================
+  # WORDPRESS AUTHENTICATION - session created from an UNVERIFIED token
+  # ============================================================================
+  #
+  # A handler that reads a token/credential out of the request and then calls
+  # wp_set_auth_cookie() / wp_set_current_user() without verifying that token
+  # (signature, HMAC, JWT decode, password or nonce check) hands out a session
+  # on possession of a value, not proof of identity.
+  #
+  # Vulnerable shape (CVE-2026-110959, Descope < 1.2.0):
+  #
+  #   function descope_login() {
+  #       $token = $_POST['token'];            // any non-empty value passes
+  #       $email = $_POST['email'];
+  #       if (!empty($token)) {                // presence-only gate
+  #           $user = get_user_by('email', $email);
+  #           wp_set_auth_cookie($user->ID);   // session for ANY account
+  #       }
+  #   }
+  #
+  # CWE-287: Improper Authentication
+
+  - id: codevigilant.php.wordpress.auth.session.unverified_token
+    message: |
+      A WordPress session is created (wp_set_auth_cookie()/wp_set_current_user())
+      inside a handler whose only check on the supplied token is that it exists.
+      Nothing verifies the token itself, so anyone who knows a target account's
+      identifier (e-mail, username, id) obtains a session for it - including an
+      administrator's - by sending any non-empty value. Verify the token
+      cryptographically (JWT::decode()/jwt_decode() with audience and expiry
+      checks, or an HMAC/signature comparison via hash_equals()) and resolve the
+      account from the VERIFIED claims, not from request parameters.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($COND) {
+                ...
+                wp_set_auth_cookie(...);
+                ...
+              }
+          - pattern: |
+              if ($COND) {
+                ...
+                wp_set_current_user(...);
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $COND
+          regex: (?i)^!?\s*(empty|isset)\s*\(.*(token|ticket|jwt|sso|bearer|assertion).*\)
+      - pattern-not: |
+          if ($COND) {
+            ...
+            hash_equals(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = hash_equals(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!hash_equals(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            hash_hmac(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = hash_hmac(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!hash_hmac(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            openssl_verify(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = openssl_verify(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!openssl_verify(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            jwt_decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = jwt_decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!jwt_decode(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            JWT::decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = JWT::decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!JWT::decode(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_verify_nonce(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_verify_nonce(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_verify_nonce(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_check_password(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_check_password(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_check_password(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_remote_post(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_remote_post(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_remote_post(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_remote_get(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_remote_get(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_remote_get(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            curl_exec(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = curl_exec(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!curl_exec(...)) {
+              ...
+            }
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_set_auth_cookie/
+        - https://developer.wordpress.org/reference/functions/wp_set_current_user/
+        - https://developer.wordpress.org/plugins/security/checking-user-capabilities/
+      source: CodeVigilant
+      license: GPL-2.0-or-later
+
+  - id: codevigilant.php.wordpress.auth.session.truthy_token_gate
+    message: |
+      A WordPress session is created inside `if (<token variable>)` - the only
+      check is that the request-supplied token is truthy. Any non-empty string
+      passes, so the handler logs in whoever names a target account instead of
+      whoever proves the token. Decode/verify the token (signature, issuer,
+      audience, expiry) and derive the user from the verified claims.
+    severity: ERROR
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($COND) {
+                ...
+                wp_set_auth_cookie(...);
+                ...
+              }
+          - pattern: |
+              if ($COND) {
+                ...
+                wp_set_current_user(...);
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $COND
+          regex: (?i)^\$?\w*(token|jwt|sso|ticket|bearer|assertion)\w*$
+      - pattern-not: |
+          if ($COND) {
+            ...
+            hash_equals(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = hash_equals(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!hash_equals(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            hash_hmac(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = hash_hmac(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!hash_hmac(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            openssl_verify(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = openssl_verify(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!openssl_verify(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            jwt_decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = jwt_decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!jwt_decode(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            JWT::decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = JWT::decode(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!JWT::decode(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_verify_nonce(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_verify_nonce(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_verify_nonce(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_check_password(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_check_password(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_check_password(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_remote_post(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_remote_post(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_remote_post(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            wp_remote_get(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = wp_remote_get(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!wp_remote_get(...)) {
+              ...
+            }
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            curl_exec(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            $V = curl_exec(...);
+            ...
+          }
+      - pattern-not: |
+          if ($COND) {
+            ...
+            if (!curl_exec(...)) {
+              ...
+            }
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-287: Improper Authentication"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_set_auth_cookie/
+        - https://developer.wordpress.org/reference/functions/wp_set_current_user/
+        - https://developer.wordpress.org/plugins/security/checking-user-capabilities/
+      source: CodeVigilant
+      license: GPL-2.0-or-later
