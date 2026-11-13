@@ -143,3 +143,14 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// File operations — attachment deletion behind a capability check
+// ---------------------------------------------------------------------------
+
+function safe_attachment_delete() {
+    if (!isset($_POST['attachment_id'])) { return; }
+    $attachment_id = absint($_POST['attachment_id']);
+    if (!current_user_can('delete_post', $attachment_id)) { return; }
+    wp_delete_attachment($attachment_id, true);
+}
