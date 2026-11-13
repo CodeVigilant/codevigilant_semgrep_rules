@@ -1,0 +1,58 @@
+rules:
+  - id: codevigilant.php.wordpress.insecure_deserialization.stored_value.unserialize.taint
+    message: |
+      Object injection through a value read back from storage. Data persisted by
+      the site (post meta, comment meta, user meta, term meta, options, comment
+      columns) is often written from request input, and WordPress stores a
+      serialized-looking string verbatim. Passing such a value to a PHP
+      deserializer instantiates whatever classes the string names, so an attacker
+      who can plant the value controls object creation and any magic method it
+      triggers. Deserialize with objects disabled:
+      unserialize( $value, array( 'allowed_classes' => false ) ), or use
+      json_decode() for plugin-owned data.
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2017 - Insecure Deserialization"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://www.php.net/manual/en/function.unserialize.php
+        - https://owasp.org/www-community/vulnerabilities/PHP_Object_Injection
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: Semgrep Rules License v1.0
+    languages: [php]
+    severity: ERROR
+    mode: taint
+    pattern-sources:
+      # Values read back from the storage layer, any of which may hold a
+      # string that was written from request input.
+      - pattern: get_post_meta(...)
+      - pattern: get_comment_meta(...)
+      - pattern: get_user_meta(...)
+      - pattern: get_term_meta(...)
+      - pattern: get_metadata(...)
+      - pattern: get_option(...)
+      - pattern: get_site_option(...)
+      - pattern: get_theme_mod(...)
+      # Stored-text column/property reads (row objects, comment objects).
+      - patterns:
+          - pattern: $ROW->$COL
+          - metavariable-regex:
+              metavariable: $COL
+              regex: ^(meta_value|option_value|comment_content|comment_agent|comment_author_url|form_value|serialized_value|payload)$
+    pattern-sinks:
+      - pattern: unserialize($SINK)
+      - pattern: maybe_unserialize($SINK)
+      - patterns:
+          - pattern: unserialize($SINK, $OPTS)
+          - focus-metavariable: $SINK
+    pattern-sanitizers:
+      # Objects disabled: the documented mitigation.
+      - patterns:
+          - pattern: unserialize($SINK, $OPTS)
+          - metavariable-regex:
+              metavariable: $OPTS
+              regex: ^(?=[\s\S]*allowed_classes[\s\S]*[Ff]alse)
+          - focus-metavariable: $SINK

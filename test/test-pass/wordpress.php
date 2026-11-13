@@ -143,3 +143,13 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Deserialization — stored value with objects disabled, and json_decode
+// ---------------------------------------------------------------------------
+
+function safe_deserialize_stored_meta($post_id) {
+    $raw = get_post_meta($post_id, 'plugin_state', true);
+    $state = unserialize($raw, array('allowed_classes' => false));
+    return $state;
+}
