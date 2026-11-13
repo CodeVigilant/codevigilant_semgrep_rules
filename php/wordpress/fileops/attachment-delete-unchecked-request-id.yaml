@@ -1,0 +1,54 @@
+rules:
+  # ============================================================================
+  # Attachment / media deletion with a request-controlled ID.
+  #
+  # wp_delete_attachment( $id, $force_delete ) removes the attachment post and,
+  # with $force_delete, its files. WordPress does not verify that the caller may
+  # delete that particular attachment, so a handler that passes a request value
+  # straight through lets any visitor who can reach the AJAX/admin-post action
+  # delete arbitrary media (or another user's uploads). That is missing
+  # object-level authorization (CWE-639 / CWE-862), not path traversal: the ID
+  # is a post identifier, so the path-deletion rules
+  # (php/wordpress/fileops/arbitrary-file-deletion.yaml, unlink/wp_delete_file/
+  # rmdir) do not reach it, and the capability rules do not list this sink.
+  #
+  # Scope is deliberately narrow: only a superglobal passed DIRECTLY as the
+  # attachment ID is reported. A taint variant is not shipped because intval()/
+  # absint() sanitizers (which every well-formed caller uses) do not add the
+  # missing ownership check, so such a rule would fire on legitimate code.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.fileops.attachment_delete.unchecked_request_id
+    patterns:
+      - pattern-either:
+          - pattern: wp_delete_attachment(<... $_GET[$K] ...>, ...)
+          - pattern: wp_delete_attachment(<... $_POST[$K] ...>, ...)
+          - pattern: wp_delete_attachment(<... $_REQUEST[$K] ...>, ...)
+          - pattern: wp_delete_attachment(<... $_COOKIE[$K] ...>, ...)
+      - pattern-not-inside: |
+          if (current_user_can(...)) { ... }
+      - pattern-not-inside: |
+          if (!current_user_can(...)) { ... }
+      - pattern-not-inside: |
+          current_user_can(...);
+          ...
+    message: |
+      wp_delete_attachment() is called with an attachment ID taken directly from
+      the request and outside any current_user_can() check. WordPress does not
+      verify that the caller owns the attachment or may delete it, so the handler
+      deletes arbitrary media on behalf of any visitor who can reach it.
+      Gate the action with current_user_can('delete_post', $id) (and a nonce)
+      after resolving the ID to an integer before deleting anything.
+    metadata:
+      category: security
+      cwe: "CWE-639: Authorization Bypass Through User-Controlled Key"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_delete_attachment/
+        - https://developer.wordpress.org/reference/functions/current_user_can/
+        - https://developer.wordpress.org/apis/security/checking-user-capabilities/
+    languages: [php]
+    mode: search
+    severity: WARNING

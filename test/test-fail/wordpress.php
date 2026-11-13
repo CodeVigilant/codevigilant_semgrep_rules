@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.fileops.attachment_delete.unchecked_request_id
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,13 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// File operations — attachment deletion with a request-controlled ID
+// ---------------------------------------------------------------------------
+
+function vuln_attachment_delete_unchecked() {
+    // EXPECTED: fileops.attachment_delete.unchecked_request_id
+    wp_delete_attachment($_POST['attachment_id'], true);
 }
