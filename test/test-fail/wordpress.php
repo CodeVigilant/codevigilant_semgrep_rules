@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.insecure_deserialization.stored_value.unserialize.taint
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,15 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Insecure Deserialization — value read back from storage (post meta)
+// ---------------------------------------------------------------------------
+
+function vuln_deserialize_stored_meta($post_id) {
+    // EXPECTED: insecure_deserialization.stored_value.unserialize.taint
+    $raw = get_post_meta($post_id, 'plugin_state', true);
+    $state = unserialize($raw);
+    return $state;
 }
