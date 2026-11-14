@@ -1,0 +1,59 @@
+rules:
+  # ============================================================================
+  # SSRF — image/header probe sinks
+  #
+  # PHP functions that perform a remote fetch purely to inspect the response
+  # (getimagesize, exif_imagetype, get_headers) reach the URL a caller supplies
+  # without going through the WordPress HTTP API. They are a classic SSRF and
+  # internal port-scan primitive in plugins that "validate" an image URL.
+  #
+  # Observed in the wild: CVE-2026-127217 (Post to Google My Business <= 3.5.7)
+  # — an unvalidated `mbp_post_attachment` URL reaches getimagesize() inside
+  # validate_external_image_size() via a REST preview route (CWE-918).
+  #
+  # The sibling sinks in ssrf_test.yaml / ssrf_new.yaml
+  # (file_get_contents, fsockopen, curl_*, wp_remote_*) do not cover these.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.ssrf.getpost.image_probe.taint
+    message: |-
+      Detected SSRF vulnerability in WordPress. User-controlled input flows into
+      getimagesize(), exif_imagetype() or get_headers(), which makes the server
+      request an attacker-chosen URL — usable for internal port scanning and
+      cloud metadata access. Validate the URL with wp_http_validate_url() or
+      esc_url_raw() before probing it.
+    severity: HIGH
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: getimagesize($URL)
+              - pattern: getimagesize($URL, ...)
+              - pattern: exif_imagetype($URL)
+              - pattern: get_headers($URL)
+              - pattern: get_headers($URL, ...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_url(...)
+              - pattern: esc_url(...)
+              - pattern: esc_url_raw(...)
+              - pattern: filter_var(...)
+              - pattern: wp_http_validate_url(...)
+    metadata:
+      category: security
+      cwe: "CWE-918: Server-Side Request Forgery (SSRF)"
+      owasp: "A10:2021 - Server-Side Request Forgery (SSRF)"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/wp_http_validate_url/
+        - https://www.php.net/manual/en/function.getimagesize.php
+        - https://patchstack.com/database/vulnerability/post-to-google-my-business

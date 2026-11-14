@@ -120,9 +120,10 @@ php/
       variables_substitutes.yaml
       variables_substitutes_1.yaml
       filtered_add_query_arg.yaml
-    ssrf/                       # Server-Side Request Forgery (5 rules)
+    ssrf/                       # Server-Side Request Forgery (6 rules)
       ssrf_test.yaml
       ssrf_new.yaml
+      ssrf_image_probe.yaml
     rce/                        # Remote Code Execution (1 rule)
       rce_basic-fileGetContents-eval.yaml
     deserialisation/            # Insecure Deserialization (1 rule)

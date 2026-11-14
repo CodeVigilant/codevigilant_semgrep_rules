@@ -123,6 +123,16 @@ function safe_ssrf_wp_remote_sanitize_url() {
     $response = wp_remote_get($api_url);
 }
 
+function safe_ssrf_image_probe_sanitize_url() {
+    if (!isset($_GET['image'])) { return; }
+    $image = sanitize_url($_GET['image']);
+    $size = getimagesize($image);
+}
+
+function safe_ssrf_image_probe_constant() {
+    $size = getimagesize('https://example.com/logo.png');
+}
+
 // ---------------------------------------------------------------------------
 // RCE — No eval, safe handling
 // ---------------------------------------------------------------------------

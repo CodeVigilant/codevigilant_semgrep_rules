@@ -32,6 +32,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.file_get_contents.direct
 // codevigilant.php.wordpress.ssrf.getpost.curl_init.direct
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
+// codevigilant.php.wordpress.ssrf.getpost.image_probe.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
 // =============================================================================
@@ -215,6 +216,25 @@ function vuln_ssrf_wp_remote_taint() {
     // EXPECTED: ssrf.getpost.wp_remote.taint
     $api_url = $_GET['api_url'];
     $response = wp_remote_get($api_url);
+}
+
+// ---------------------------------------------------------------------------
+// SSRF — getimagesize() with request-derived URL (CVE-2026-127217 shape)
+// ---------------------------------------------------------------------------
+
+function vuln_ssrf_getimagesize_taint() {
+    // EXPECTED: ssrf.getpost.image_probe.taint
+    $image_url = $_POST['mbp_post_attachment'];
+    $size = getimagesize($image_url);
+}
+
+// ---------------------------------------------------------------------------
+// SSRF — get_headers() with user input
+// ---------------------------------------------------------------------------
+
+function vuln_ssrf_get_headers_direct() {
+    // EXPECTED: ssrf.getpost.image_probe.taint
+    get_headers($_GET['target']);
 }
 
 // ---------------------------------------------------------------------------
