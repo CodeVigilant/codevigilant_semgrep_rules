@@ -1,0 +1,42 @@
+rules:
+  - id: codevigilant.java.jenkins.xss.unescaped-html-getter-concatenation
+    message: >-
+      A bean getter returns an HTML fragment built by concatenating an instance
+      field directly into a tag literal. Template engines and Jelly/Stapler
+      views render such getters verbatim, without escaping, so any
+      attacker-influenced value in the field becomes live markup on the
+      application origin (stored XSS, CWE-79). Escape the field before
+      concatenation (e.g. `StringEscapeUtils.escapeHtml4(...)`,
+      `Util.escape(...)`, `Functions.htmlEscape(...)`) or return the raw value
+      and let the view perform the escaping.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              public String $M(...) {
+                ...
+                return $HTML + $F + ...;
+              }
+          - pattern: |
+              public String $M(...) {
+                ...
+                return $HTML + $F;
+              }
+      - metavariable-regex:
+          metavariable: $HTML
+          regex: '"(?:[^"\\]|\\.)*<(?:[a-zA-Z]|/|!)'
+      - metavariable-regex:
+          metavariable: $F
+          regex: '^(?:this\.)?[a-zA-Z_][a-zA-Z0-9_]*$'
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/Top10/A03_2021-Injection/
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+      source: semgrep-rule-gap
+      license: MIT
