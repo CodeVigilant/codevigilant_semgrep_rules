@@ -325,3 +325,236 @@ rules:
     languages: [php]
     mode: search
     severity: HIGH
+
+  # get_results / get_var were the only $wpdb sinks with no variable-substitution
+  # coverage: assigning $_GET/$_POST to a variable and interpolating it defeated the
+  # .direct patterns (search mode matches the superglobal inside the call only), so
+  # e.g. `$sort = $_GET['sort']; $wpdb->get_results("... ORDER BY $sort")` produced no
+  # finding. get_row and query already carry .taint/.deep_taint for the same shape.
+  - id: codevigilant.php.wordpress.sqli.getpost.get_results.taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $wpdb->get_results(<... $_GET[$KEY] ...>)
+        - pattern: |
+            $wpdb->get_results(<... $_POST[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... (int) $_POST[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... intval($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... sprintf($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... esc_sql($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... (int) $_GET[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... intval($_GET[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... sprintf($_GET[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_results(<... esc_sql($_GET[$KEY]) ...>)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      User input from $_GET or $_POST flows into $wpdb->get_results() without sanitization.
+      Use $wpdb->prepare() or esc_sql() to properly sanitize user input.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.getpost.get_results.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            $wpdb->get_results(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            $wpdb->get_results(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_results($wpdb->prepare(...));
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_results($wpdb->prepare(...));
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_results(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_results(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_results(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_results(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_results(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_results(<... esc_sql($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_results(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_results(<... esc_sql($V) ...>);
+      - pattern-not-inside: |
+          $V = (int) $_GET[$KEY];
+          ...
+          $wpdb->get_results(<... $V ...>);
+      - pattern-not-inside: |
+          $V = (int) $_POST[$KEY];
+          ...
+          $wpdb->get_results(<... $V ...>);
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      User input from $_GET or $_POST is assigned to a variable and later used in $wpdb->get_results() without sanitization.
+      Use $wpdb->prepare() or esc_sql() to properly sanitize user input.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.getpost.get_var.taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $wpdb->get_var(<... $_GET[$KEY] ...>)
+        - pattern: |
+            $wpdb->get_var(<... $_POST[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... (int) $_POST[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... intval($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... sprintf($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... esc_sql($_POST[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... (int) $_GET[$KEY] ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... intval($_GET[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... sprintf($_GET[$KEY]) ...>)
+      - pattern-not: |
+          $wpdb->get_var(<... esc_sql($_GET[$KEY]) ...>)
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      User input from $_GET or $_POST flows into $wpdb->get_var() without sanitization.
+      Use $wpdb->prepare() or esc_sql() to properly sanitize user input.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH
+
+  - id: codevigilant.php.wordpress.sqli.getpost.get_var.deep_taint
+    patterns:
+      - pattern-either:
+        - pattern: |
+            $V = $_GET[$KEY];
+            ...
+            $wpdb->get_var(<... $V ...>);
+        - pattern: |
+            $V = $_POST[$KEY];
+            ...
+            $wpdb->get_var(<... $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_var($wpdb->prepare(...));
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_var($wpdb->prepare(...));
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_var(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_var(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_var(<... (int) $V ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_var(<... intval($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_var(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_GET[$KEY];
+          ...
+          $wpdb->get_var(<... esc_sql($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_var(<... sprintf($V) ...>);
+      - pattern-not-inside: |
+          $V = $_POST[$KEY];
+          ...
+          $wpdb->get_var(<... esc_sql($V) ...>);
+      - pattern-not-inside: |
+          $V = (int) $_GET[$KEY];
+          ...
+          $wpdb->get_var(<... $V ...>);
+      - pattern-not-inside: |
+          $V = (int) $_POST[$KEY];
+          ...
+          $wpdb->get_var(<... $V ...>);
+    message: |
+      Detected SQL injection vulnerability in WordPress.
+      User input from $_GET or $_POST is assigned to a variable and later used in $wpdb->get_var() without sanitization.
+      Use $wpdb->prepare() or esc_sql() to properly sanitize user input.
+    metadata:
+      category: security
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/classes/wpdb/#protect-queries-against-sql-injection-attacks
+    languages: [php]
+    mode: search
+    severity: HIGH

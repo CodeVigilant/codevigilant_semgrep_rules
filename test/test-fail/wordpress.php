@@ -10,10 +10,14 @@
 // codevigilant.php.wordpress.sqli.getpost.query.taint
 // codevigilant.php.wordpress.sqli.getpost.query.deep_taint
 // codevigilant.php.wordpress.sqli.getpost.get_results.direct
+// codevigilant.php.wordpress.sqli.getpost.get_results.taint
+// codevigilant.php.wordpress.sqli.getpost.get_results.deep_taint
 // codevigilant.php.wordpress.sqli.getpost.get_row.direct
 // codevigilant.php.wordpress.sqli.getpost.get_row.taint
 // codevigilant.php.wordpress.sqli.getpost.get_row.deep_taint
 // codevigilant.php.wordpress.sqli.getpost.get_var.direct
+// codevigilant.php.wordpress.sqli.getpost.get_var.taint
+// codevigilant.php.wordpress.sqli.getpost.get_var.deep_taint
 // codevigilant.php.wordpress.sqli.cookie.query.direct
 // codevigilant.php.wordpress.sqli.cookie.query.deep_taint
 // codevigilant.php.wordpress.sqli.cookie.get_results.direct
@@ -48,8 +52,22 @@ function vuln_sqli_getpost_query_direct() {
 
 function vuln_sqli_getpost_get_results_direct() {
     global $wpdb;
-    // EXPECTED: sqli.getpost.get_results.direct
+    // EXPECTED: sqli.getpost.get_results.direct, sqli.getpost.get_results.taint
     $wpdb->get_results("SELECT * FROM wp_posts WHERE author = " . $_POST['author']);
+}
+
+function vuln_sqli_getpost_get_results_deep_taint() {
+    global $wpdb;
+    // EXPECTED: sqli.getpost.get_results.deep_taint
+    $sort = $_GET['sort'];
+    $wpdb->get_results("SELECT * FROM wp_posts ORDER BY $sort");
+}
+
+function vuln_sqli_getpost_get_var_deep_taint() {
+    global $wpdb;
+    // EXPECTED: sqli.getpost.get_var.deep_taint
+    $status = $_POST['status'];
+    $wpdb->get_var("SELECT count(*) FROM wp_posts WHERE post_status = '$status'");
 }
 
 function vuln_sqli_getpost_get_row_direct() {
