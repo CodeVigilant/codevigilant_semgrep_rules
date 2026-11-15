@@ -1,0 +1,42 @@
+rules:
+  # ============================================================================
+  # JELLY VIEW PRINTS A SERVER-BUILT STRING WITH ESCAPING DISABLED (CWE-79)
+  # Generic shape: a .jelly view emits a model value through
+  # `<j:out value="${...}" escapeText="false"/>` (attribute order irrelevant).
+  # escapeText="false" is Jelly's "this string is already HTML" switch: whatever
+  # the getter returns is written into the response byte-for-byte. Any getter
+  # that assembles its string from instance fields (parsed build artefacts,
+  # configuration values, remote API data) therefore turns attacker-influenced
+  # characters into live markup on the application origin — stored XSS.
+  # Enabling escaping at the view (escapeText="true", the default) or escaping
+  # every interpolated value in the getter removes the sink.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.xss.jelly-raw-output-escape-disabled
+    message: >-
+      A Jelly view renders a server-side value with escapeText="false", so the
+      string is emitted into the HTML response without escaping. If the getter
+      builds that string by concatenating fields (build artefacts, job
+      configuration, remote data), attacker-influenced characters become live
+      markup on the application origin (CWE-79, stored XSS). Drop the
+      escapeText="false" attribute (escaping is on by default), or escape every
+      interpolated value with Functions.htmlEncode()/Util.escape() before the
+      view renders it.
+    severity: ERROR
+    languages: [generic]
+    paths:
+      include:
+        - "*.jelly"
+    patterns:
+      - pattern-regex: "<j:out\\b[^>]*\\bescapeText\\s*=\\s*[\"']false[\"'][^>]*/?>"
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://owasp.org/Top10/A03_2021-Injection/
+        - https://www.jenkins.io/doc/developer/security/xss-prevention/
+      source: semgrep-rule-gap
+      license: MIT
