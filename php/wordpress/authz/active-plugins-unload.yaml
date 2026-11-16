@@ -1,0 +1,40 @@
+rules:
+  - id: codevigilant.php.wordpress.authz.active_plugins.unload
+    patterns:
+      - pattern: |
+          function $F( array $plugins ): array {
+            ...
+            unset($plugins[$KEY]);
+            ...
+          }
+    message: |
+      A callback that removes entries from the active plugin list ($plugins) can switch off every
+      protection the removed plugins provide for that request: REST access rules, login hardening,
+      WAF and two-factor checks all run from plugin code that is no longer loaded.
+
+      The unload decision is almost always derived from request data, and the request path is not
+      a reliable signal. WordPress dispatches a `rest_route` request parameter over the route in
+      the URL path, honours PATH_INFO (`/wp-json/...` after any front controller), resolves the
+      REST prefix through a filter, and cannot serve REST at all when permalinks are plain. A
+      path-prefix test that "proves" the request is your own REST call can therefore be steered
+      onto an unrelated core route such as /wp/v2/users, with the other plugins switched off.
+
+      Do not filter `option_active_plugins` for performance. If unloading is unavoidable, gate it
+      on the route the REST server actually dispatched (state recorded from `rest_pre_dispatch`,
+      or the namespace of `rest_get_url_prefix()`), and keep every plugin loaded when `rest_route`
+      is present, permalinks are plain, the request did not enter through the front controller, or
+      the route is not an exact match.
+    metadata:
+      category: security
+      cwe: "CWE-693: Protection Mechanism Failure"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: MEDIUM
+      references:
+        - https://developer.wordpress.org/reference/functions/rest_get_url_prefix/
+        - https://developer.wordpress.org/reference/hooks/rest_pre_dispatch/
+        - https://developer.wordpress.org/reference/functions/rest_get_server/
+        - https://owasp.org/www-project-top-ten/2017/A5_2017-Broken_Access_Control
+    languages: [php]
+    mode: search
+    severity: WARNING
