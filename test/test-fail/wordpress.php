@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.authz.active_plugins.unload
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -235,3 +236,25 @@ function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
 }
+
+// ---------------------------------------------------------------------------
+// Broken access control — request-gated unload of other plugins
+// ---------------------------------------------------------------------------
+
+function vuln_unload_other_plugins( array $plugins ): array {
+    // EXPECTED: authz.active_plugins.unload
+    $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+    $path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+    if ( ! str_starts_with( $path, '/wp-json/vendor/v1/' ) ) {
+        return $plugins;
+    }
+    foreach ( $plugins as $key => $plugin ) {
+        if ( strpos( $plugin, 'vendor/' ) !== false ) {
+            continue;
+        }
+        unset( $plugins[ $key ] );
+    }
+    return $plugins;
+}
+
+add_filter( 'option_active_plugins', 'vuln_unload_other_plugins' );
