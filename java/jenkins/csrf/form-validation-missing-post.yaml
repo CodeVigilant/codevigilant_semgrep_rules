@@ -1,0 +1,38 @@
+rules:
+  - id: codevigilant.java.jenkins.csrf.form-validation.missing-post
+    message: >-
+      A Jenkins form-validation method (`doCheck*` / `doFill*` / `doValidate*` /
+      `doTest*`) is declared without the `@POST` annotation. Descriptor and
+      object validation methods are Stapler request endpoints: without `@POST`
+      they answer GET, so a cross-site request fired from a victim's browser (an
+      `<img>`, `<script>` or auto-submitted form on any page they visit) can
+      invoke the endpoint on their behalf, and any unauthenticated client can
+      call it directly over the remote API. Annotate the method with
+      `@POST`, and add an explicit `checkPermission(...)` when the validation
+      reads or mutates configuration-scoped state (CWE-352/CWE-862).
+    severity: WARNING
+    languages:
+      - java
+    patterns:
+      - pattern-either:
+          - pattern: |
+              public FormValidation $M(...) { ... }
+          - pattern: |
+              public hudson.util.FormValidation $M(...) { ... }
+      - metavariable-regex:
+          metavariable: $M
+          regex: ^(doCheck|doFill|doValidate|doTest|doVerify).
+      - pattern-not-inside: |
+          @POST
+          $RET $METHOD(...) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-352: Cross-Site Request Forgery (CSRF)"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: HIGH
+      references:
+        - https://www.jenkins.io/doc/developer/security/form-validation/
+        - https://www.jenkins.io/doc/developer/security/securing-jenkins/
+      source: semgrep-rule-gap
+      license: MIT
