@@ -1,0 +1,92 @@
+rules:
+  # ============================================================================
+  # BUILD-STEP FAILURE SWALLOWED INSIDE perform()
+  # (CWE-703 Improper Check or Handling of Exceptional Conditions / CWE-693
+  #  Protection Mechanism Failure)
+  #
+  # Generic shape: a Jenkins build step's `perform(...)` (SimpleBuildStep /
+  # Builder) wraps the work it exists to do in
+  #   try { ... } catch (Exception|Throwable e) { log-only-handling }
+  # and then returns normally instead of failing the build. Every failure of
+  # that operation — unreachable service, rejected credentials, timeout,
+  # rejected upload, malformed response — becomes a log line while the step
+  # reports SUCCESS. When the step is a security gate (scan / verification /
+  # policy check) the gate therefore fails OPEN: the pipeline goes green while
+  # nothing was actually verified.
+  #
+  # Correct shapes (excluded here): rethrow as AbortException with context, or
+  # record the failure on the build (run.setResult(Result.FAILURE/UNSTABLE)).
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.cicd.build-step-swallowed-failure
+    message: >-
+      A build step's perform() catches Exception/Throwable and only logs it,
+      then returns normally, so the step (and the whole build) is reported as
+      SUCCESS even though its work failed. A scan/verification/policy step
+      built this way fails open: an unreachable service, rejected credentials,
+      timeout or rejected upload produce a green build with nothing verified
+      (CWE-703/CWE-693). Rethrow as AbortException with context, or set the
+      build result to FAILURE/UNSTABLE inside the catch block.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-inside: |
+          $RET perform(...) {
+            ...
+          }
+      - pattern-either:
+          - patterns:
+              - pattern: |
+                  try {
+                    ...
+                  } catch (Exception $E) {
+                    ...
+                  }
+              - pattern-not: |
+                  try {
+                    ...
+                  } catch (Exception $E) {
+                    ...
+                    throw ...;
+                  }
+              - pattern-not: |
+                  try {
+                    ...
+                  } catch (Exception $E) {
+                    ...
+                    $RUN.setResult(...);
+                    ...
+                  }
+          - patterns:
+              - pattern: |
+                  try {
+                    ...
+                  } catch (Throwable $E) {
+                    ...
+                  }
+              - pattern-not: |
+                  try {
+                    ...
+                  } catch (Throwable $E) {
+                    ...
+                    throw ...;
+                  }
+              - pattern-not: |
+                  try {
+                    ...
+                  } catch (Throwable $E) {
+                    ...
+                    $RUN.setResult(...);
+                    ...
+                  }
+    metadata:
+      category: security
+      cwe: "CWE-703: Improper Check or Handling of Exceptional Conditions"
+      owasp: "A09:2021 - Security Logging and Monitoring Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/703.html
+        - https://www.jenkins.io/doc/developer/plugin-development/pipeline-integration/
+      source: semgrep-rule-gap
+      license: MIT
