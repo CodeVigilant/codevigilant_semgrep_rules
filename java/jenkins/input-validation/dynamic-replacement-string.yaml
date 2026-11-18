@@ -1,0 +1,38 @@
+rules:
+  - id: codevigilant.java.jenkins.input-validation.replace-first.dynamic-replacement
+    message: >-
+      $STR.replaceFirst(...)/replaceAll(...) is called with a non-constant replacement
+      string and the replacement is not passed through Matcher.quoteReplacement().
+      Replacement strings are not literals: `$` introduces a group reference and `\`
+      starts an escape, so any "$<digit>" that the pattern does not define, or a
+      trailing backslash, makes the call throw IndexOutOfBoundsException or
+      IllegalArgumentException at runtime. When the replacement carries request data
+      an unauthenticated caller controls the exception and kills the request. Build the
+      replacement with Matcher.quoteReplacement(), or use appendReplacement() on a
+      Matcher after validating the value.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $STR.replaceFirst($REGEX, $REPLACEMENT)
+          - pattern: $STR.replaceAll($REGEX, $REPLACEMENT)
+      - pattern-not: $STR.replaceFirst($REGEX, "...")
+      - pattern-not: $STR.replaceAll($REGEX, "...")
+      - pattern-not: $STR.replaceFirst($REGEX, Matcher.quoteReplacement(...))
+      - pattern-not: $STR.replaceAll($REGEX, Matcher.quoteReplacement(...))
+      - pattern-not: $STR.replaceFirst($REGEX, java.util.regex.Matcher.quoteReplacement(...))
+      - pattern-not: $STR.replaceAll($REGEX, java.util.regex.Matcher.quoteReplacement(...))
+      - metavariable-regex:
+          metavariable: $REPLACEMENT
+          regex: ^(?!".*"$).*$
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      owasp: "A03:2021 - Injection"
+      technology: java
+      confidence: MEDIUM
+      references:
+        - https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html#replaceFirst(java.lang.String,java.lang.String)
+        - https://cwe.mitre.org/data/definitions/20.html
+      source: semgrep-rule-gap
+      license: MIT
