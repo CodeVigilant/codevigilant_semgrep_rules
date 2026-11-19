@@ -143,3 +143,19 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Hard-coded signature key — key generated and stored, not embedded in source
+// ---------------------------------------------------------------------------
+
+class Safe_Cron_Signature {
+    private $cron_url_salt;
+
+    public function __construct() {
+        $this->cron_url_salt = get_option('myplugin_cron_salt');
+    }
+
+    public function generate_hash_for_url($id, $tme, $action_type) {
+        return hash_hmac('sha256', $tme . '_' . $id . $action_type, $this->cron_url_salt);
+    }
+}
