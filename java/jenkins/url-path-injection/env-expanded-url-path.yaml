@@ -1,0 +1,61 @@
+rules:
+  # ============================================================================
+  # ENVIRONMENT-EXPANDED CONFIG VALUE FLOWING INTO A URL PATH (String.format)
+  # (CWE-88 Improper Neutralization of Argument Delimiters — request-target
+  #  injection / scope escape on an authenticated outbound API call)
+  # Generic shape: a plugin configuration field is run through the build
+  # environment expansion API (`$ENV.expand($CONF)`, typically on
+  # `build.getEnvironment(listener)`), kept in a local, and interpolated with
+  # `String.format()` into a URL that the plugin calls with its stored service
+  # credential. The expanded value is attacker-influenced wherever the
+  # referenced variable is a build parameter, a branch-derived variable or any
+  # other build-supplied value, and it is never checked for path separators,
+  # `..` segments or `?`/`#`. The emitted request target therefore leaves the
+  # intended resource: an authenticated POST/DELETE lands on a sibling
+  # repository/collection, on another endpoint of the same service, or with a
+  # rewritten query string.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.url.env-expanded-path-injection
+    message: >-
+      A configuration value expanded with the build environment
+      (`$ENV.expand($CONF)`) reaches a URL built by `String.format()` and is
+      used as the request target of an authenticated API call. Nothing
+      validates the expanded value, so a build parameter or branch-derived
+      variable containing `/`, `..`, `?` or `#` rewrites the emitted path —
+      performing the credentialed action against a different resource of the
+      same service than the one the job was configured for (CWE-88).
+      Encode the value as a single path segment, and reject
+      `.`/`..`/separator/query characters before the URL is built.
+    severity: ERROR
+    languages: [java]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern: $ENV.expand($CONF)
+          - metavariable-regex:
+              metavariable: $ENV
+              regex: '(?i).*(getenvironment|envvars|env|environment).*'
+    pattern-sinks:
+      - patterns:
+          - pattern: String.format($FMT, ...)
+          - metavariable-regex:
+              metavariable: $FMT
+              regex: '.*(https?://|/api|/repositories|/rest/|/v[0-9]/).*'
+    pattern-sanitizers:
+      - pattern: $ANY.encode(...)
+      - pattern: $ANY.replaceAll("...", "...")
+      - pattern: $ANY.matches("...")
+      - pattern: $ANY.substring(...)
+    metadata:
+      category: security
+      cwe: "CWE-88: Improper Neutralization of Argument Delimiters in a Command ('Argument Injection')"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/88.html
+        - https://www.rfc-editor.org/rfc/rfc3986#section-5.2.4
+        - https://www.jenkins.io/doc/developer/security/
+      source: semgrep-rule-gap
+      license: MIT
