@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.hardcoded_signature.key
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,23 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Hard-coded signature key — literal salt signs a URL cron request
+// (CVE-2026-133117 shape: WebToffee Product Feed <= 2.4.3)
+// ---------------------------------------------------------------------------
+
+class Vuln_Cron_Signature {
+    // EXPECTED: auth.hardcoded_signature.key
+    private $cron_url_salt = 'hardcoded-cron-salt-9f2b';
+
+    public function generate_hash_for_url($id, $tme, $action_type) {
+        return md5($tme . '_' . $this->cron_url_salt . '-' . $id . $action_type);
+    }
+}
+
+function vuln_hmac_literal_key($data) {
+    // EXPECTED: auth.hardcoded_signature.key
+    return hash_hmac('sha256', $data, 'static-shared-key');
 }

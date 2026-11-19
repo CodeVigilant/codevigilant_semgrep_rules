@@ -1,0 +1,42 @@
+rules:
+  # ============================================================================
+  # HARD-CODED SIGNATURE KEY (CWE-798)
+  #
+  # Request/"cron URL" signatures keyed with a literal salt embedded in the
+  # plugin source are forgeable by anyone who reads the code: the attacker
+  # recomputes the hash and drives the unauthenticated endpoint (WebToffee
+  # Product Feed <= 2.4.3, CVE-2026-133117).
+  #
+  # The fixed build moves the key out of source (generated/stored option), so
+  # the declaration shape below no longer matches.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.auth.hardcoded_signature.key
+    message: >-
+      Hard-coded key material is used to sign/verify a request (salt/secret
+      literal in source, or a hash call keyed with an inline literal). Anyone
+      who reads the plugin can forge a valid signature. Generate the key with
+      wp_generate_password()/random_bytes() and store it in an option.
+    severity: WARNING
+    languages: [php]
+    patterns:
+      - pattern-either:
+          - pattern-regex: '(?i)\b(?:private|protected|public|var)\s+\$[A-Za-z0-9_]*(?:salt|secret|hmac|signing_?key)[A-Za-z0-9_]*\s*=\s*[''"][^''"]{6,}[''"]'
+          - pattern-regex: '(?i)\bconst\s+[A-Za-z0-9_]*(?:SALT|SECRET|HMAC|SIGNING_KEY)[A-Za-z0-9_]*\s*=\s*[''"][^''"]{6,}[''"]'
+          - pattern-regex: '(?i)\bdefine\s*\(\s*[''"][A-Z0-9_]*(?:SALT|SECRET|HMAC|SIGNING_KEY)[A-Z0-9_]*[''"]\s*,\s*[''"][^''"]{6,}[''"]'
+          - pattern: hash_hmac($ALGO, $DATA, "...")
+          - pattern: hash_hmac($ALGO, $DATA, "...", ...)
+          - pattern: md5($DATA . "...")
+          - pattern: md5("..." . $DATA)
+          - pattern: sha1($DATA . "...")
+          - pattern: sha1("..." . $DATA)
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      technology: php
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/798.html
+        - https://developer.wordpress.org/reference/functions/wp_generate_password/
+      source: CodeVigilant
