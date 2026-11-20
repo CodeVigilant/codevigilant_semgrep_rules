@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.password_change.missing_verification
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,30 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Unverified password change (CWE-620)
+// ---------------------------------------------------------------------------
+
+function vuln_pw_change_ajax() {
+    // EXPECTED: auth.password_change.missing_verification
+    $user_id = $_POST['user_id'];
+    $newpass = $_POST['new_password'];
+    wp_set_password($newpass, $user_id);
+}
+
+function vuln_pw_change_update_user() {
+    // EXPECTED: auth.password_change.missing_verification
+    wp_update_user(array('ID' => $_REQUEST['uid'], 'user_pass' => $_POST['pass']));
+}
+
+function vuln_pw_change_user_meta() {
+    // EXPECTED: auth.password_change.missing_verification
+    update_user_meta($_POST['uid'], 'user_pass', $_POST['pw']);
+}
+
+function vuln_pw_change_rest() {
+    // EXPECTED: auth.password_change.missing_verification
+    wp_set_password($request->get_param('password'), $request->get_param('user_id'));
 }
