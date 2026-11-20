@@ -143,3 +143,40 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Password change — current password / reset key / capability verified
+// ---------------------------------------------------------------------------
+
+function safe_pw_change_current_password() {
+    $user = wp_get_current_user();
+    if (!wp_check_password($_POST['current_password'], $user->user_pass, $user->ID)) {
+        return new WP_Error('bad_pass', 'Wrong password');
+    }
+    wp_set_password($_POST['new_password'], $user->ID);
+}
+
+function safe_pw_reset_with_key() {
+    $user = check_password_reset_key($_POST['key'], $_POST['login']);
+    if (is_wp_error($user)) {
+        return;
+    }
+    wp_set_password($_POST['password'], $user->ID);
+}
+
+function safe_pw_change_with_capability() {
+    if (!current_user_can('edit_user', $_POST['uid'])) {
+        return;
+    }
+    wp_set_password($_POST['password'], $_POST['uid']);
+}
+
+function safe_pw_change_with_nonce() {
+    check_admin_referer('change_password');
+    wp_update_user(array('ID' => get_current_user_id(), 'user_pass' => $_POST['pass']));
+}
+
+function safe_profile_update_no_password() {
+    $display_name = sanitize_text_field($_POST['display_name']);
+    wp_update_user(array('ID' => get_current_user_id(), 'display_name' => $display_name));
+}
