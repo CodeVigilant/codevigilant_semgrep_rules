@@ -143,3 +143,41 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// User meta — literal key, or request value with a server-chosen key
+// ---------------------------------------------------------------------------
+
+function safe_user_meta_literal_key() {
+    $user_id = get_current_user_id();
+    if (current_user_can('edit_user', $user_id)) {
+        update_user_meta($user_id, 'wp_capabilities', array('subscriber' => true));
+    }
+}
+
+function safe_user_meta_sanitized_key() {
+    $user_id = get_current_user_id();
+    if (current_user_can('edit_user', $user_id)) {
+        $key = sanitize_key($_POST['meta_key']);
+        update_user_meta($user_id, $key, sanitize_text_field($_POST['value']));
+    }
+}
+
+function safe_user_meta_value_taint_only() {
+    $user_id = get_current_user_id();
+    if (current_user_can('edit_user', $user_id)) {
+        update_user_meta($user_id, 'first_name', sanitize_text_field($_POST['first_name']));
+    }
+}
+
+function safe_user_meta_allowlisted_key() {
+    $user_id = get_current_user_id();
+    $allowed = array('billing_first_name', 'billing_last_name');
+    if (current_user_can('edit_user', $user_id)) {
+        foreach ($_POST as $key => $value) {
+            if (in_array($key, $allowed)) {
+                update_user_meta($user_id, $key, sanitize_text_field($value));
+            }
+        }
+    }
+}
