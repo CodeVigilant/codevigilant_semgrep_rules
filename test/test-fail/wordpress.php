@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.priv_esc.request_user_meta_key
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,20 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Privilege Escalation — request-controlled user meta key
+// (CVE-2026-125294 shape: tpgb_acf_key[] reaches update_user_meta unchecked)
+// ---------------------------------------------------------------------------
+
+function vuln_user_meta_key_direct() {
+    // EXPECTED: priv_esc.request_user_meta_key
+    update_user_meta(get_current_user_id(), $_POST['meta_key'], 'administrator');
+}
+
+function vuln_user_meta_key_via_array() {
+    // EXPECTED: priv_esc.request_user_meta_key
+    $key = $_POST['tpgb_acf_key'][0];
+    add_user_meta($_POST['user_id'], $key, $_POST['tpgb_acf'][0]);
 }

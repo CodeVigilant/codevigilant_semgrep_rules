@@ -1,0 +1,80 @@
+rules:
+  # ============================================================================
+  # REQUEST-CONTROLLED USER META KEY (MASS ASSIGNMENT → PRIVILEGE ESCALATION)
+  #
+  # WordPress stores a user's role in the `wp_capabilities` user-meta row, so a
+  # meta key taken straight from the request lets an attacker write that row and
+  # grant themselves administrator. Value taint into update_user_meta() is
+  # normal (every profile form does it); it is the *key* slot that must never be
+  # request-controlled. `focus-metavariable` restricts the sink to $KEY.
+  #
+  # Reference case: CVE-2026-125294 — Nexter Blocks Pro <= 5.0.10,
+  # tpgb_ajax_register_user() passes request keys from `tpgb_acf_key[]` to
+  # update_user_meta() behind a byte-level denylist. Unicode look-alikes
+  # ("ẇp_çapabilities") pass the denylist while the accent-insensitive
+  # collation treats them as `wp_capabilities`, so an unauthenticated attacker
+  # gets the administrator role (CVSS 9.8).
+  #
+  # Any denylist is bypassable at the string level (case, Unicode look-alike,
+  # collation). Allowing arbitrary keys is the vulnerability; sanitize_key()
+  # plus an allowlist is the fix.
+  #
+  # Excluded shapes: a key built by concatenating onto a literal prefix
+  # ("user_registration_" . $name) cannot reach `wp_capabilities`, and a key
+  # checked against a server-side allowlist (in_array($key, $fields)) is
+  # constrained to that list.
+  # ============================================================================
+
+  - id: codevigilant.php.wordpress.priv_esc.request_user_meta_key
+    message: "Request-controlled user meta key passed to update_user_meta()/add_user_meta(). A key such as 'wp_capabilities' rewrites the user's role, so denylists on the key are bypassable (case, Unicode look-alike, accent-insensitive collation) and an attacker can grant themselves administrator. Restrict the key to a fixed allowlist of literal keys, or sanitize and map it server-side."
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET
+              - pattern: $_POST
+              - pattern: $_REQUEST
+              - pattern: $_COOKIE
+              - pattern: $_GET[...]
+              - pattern: $_POST[...]
+              - pattern: $_REQUEST[...]
+              - pattern: $_COOKIE[...]
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: update_user_meta($UID, $KEY, ...)
+              - pattern: add_user_meta($UID, $KEY, ...)
+              - pattern: update_user_meta($UID, $KEY)
+              - pattern: add_user_meta($UID, $KEY)
+          - focus-metavariable: $KEY
+          # A literal prefix pins the key namespace away from wp_capabilities.
+          - metavariable-pattern:
+              metavariable: $KEY
+              patterns:
+                - pattern-not: $A . $B
+          # Key gated on a server-side allowlist.
+          - pattern-not-inside: |
+              if (in_array($KEY, ...)) { ... }
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_title(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: absint(...)
+              - pattern: intval(...)
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      secondary_cwe: "CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/update_user_meta/
+        - https://developer.wordpress.org/reference/functions/sanitize_key/
+        - https://nvd.nist.gov/vuln/detail/CVE-2026-125294
+      source: CodeVigilant
+      license: MIT
