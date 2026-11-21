@@ -1,0 +1,29 @@
+rules:
+  - id: codevigilant.yaml.github-actions.injection.event-expression.run-block
+    languages:
+      - yaml
+    severity: ERROR
+    message: >-
+      A GitHub Actions expression that reads workflow-event data is interpolated
+      into a `run:` shell block. The expression is replaced by its raw value
+      before the shell parses the script, so a value containing shell
+      metacharacters ($( ), backticks, quotes, redirections) becomes executed
+      shell code on the runner. Pass the value through an `env:` variable and
+      reference the variable from the script instead.
+    metadata:
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code ('Code Injection')"
+        - "CWE-78: Improper Neutralization of Special Elements used in an OS Command"
+      owasp:
+        - "A03:2021 - Injection"
+      technology:
+        - github-actions
+      confidence: HIGH
+      references:
+        - https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections
+        - https://securitylab.github.com/research/github-actions-untrusted-input/
+      source: https://github.com/CodeVigilant/codevigilant_semgrep_rules
+      license: Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license
+    patterns:
+      - pattern-regex: '(?s)run:[^\n]*\n(?:(?:[ \t]+[^\n]*)?\n)*?[ \t]+[^\n]*\$\{\{[^}]*\bgithub\.(?:event|head_ref|base_ref)\b'
+      - pattern-not-regex: '(?s)run:[^\n]*\n(?:(?:[ \t]+[^\n]*)?\n)*?[ \t]+[^\n]*\$\{\{\s*env\.'
