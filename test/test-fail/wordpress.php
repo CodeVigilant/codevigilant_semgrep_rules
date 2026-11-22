@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.cors.origin.reflection
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,21 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// CORS — request Origin reflected into Access-Control-Allow-Origin
+// ---------------------------------------------------------------------------
+
+function vuln_cors_reflect_origin_direct() {
+    // EXPECTED: cors.origin.reflection
+    header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+    header('Access-Control-Allow-Credentials: true');
+}
+
+function vuln_cors_reflect_origin_variable() {
+    // EXPECTED: cors.origin.reflection
+    $origin = get_http_origin();
+    $cors_header = 'Access-Control-Allow-Origin: ' . $origin;
+    header($cors_header);
 }

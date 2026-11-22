@@ -143,3 +143,20 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// CORS — static allowlist, no origin reflection
+// ---------------------------------------------------------------------------
+
+function safe_cors_static_origin() {
+    header('Access-Control-Allow-Origin: https://example.com');
+    header('Access-Control-Allow-Credentials: true');
+}
+
+function safe_cors_allowlist_membership() {
+    $origin = $_SERVER['HTTP_ORIGIN'];
+    $allowed_origins = array('https://a.example', 'https://b.example');
+    if (in_array($origin, $allowed_origins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+    }
+}
