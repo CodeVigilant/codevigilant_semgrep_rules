@@ -1,0 +1,63 @@
+rules:
+  - id: codevigilant.php.wordpress.cors.origin.reflection
+    languages: [php]
+    severity: ERROR
+    message: |
+      Detected permissive CORS policy in WordPress code (CWE-942).
+
+      The request Origin header (or a value derived from it) is reflected back into
+      an Access-Control-Allow-Origin response header. Paired with
+      Access-Control-Allow-Credentials true, any page on the reflected origin can
+      read authenticated responses belonging to the victim site.
+
+      Use an explicit allowlist of trusted origins (WordPress core:
+      get_allowed_http_origins() / add_allowed_http_origins()) and reject anything
+      else, or expose public data with a wildcard origin and no credentials.
+    metadata:
+      category: security
+      cwe: "CWE-942: Permissive Cross-domain Policy with Untrusted Domains"
+      owasp: "A05:2021 - Security Misconfiguration"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/reference/functions/get_allowed_http_origins/
+        - https://developer.wordpress.org/rest-api/using-the-rest-api/frequently-asked-questions/
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_SERVER['HTTP_ORIGIN']
+          - pattern: $_SERVER["HTTP_ORIGIN"]
+          - pattern: $_SERVER['HTTP_REFERER']
+          - pattern: $_SERVER["HTTP_REFERER"]
+          - pattern: get_http_origin()
+          - pattern: $_SERVER['HTTP_ORIGIN'] ?? $DEFAULT
+          - pattern: $_SERVER["HTTP_ORIGIN"] ?? $DEFAULT
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: 'header("Access-Control-Allow-Origin: " . $ORIGIN)'
+              - pattern: "header('Access-Control-Allow-Origin: ' . $ORIGIN)"
+              - pattern: 'header("Access-Control-Allow-Origin: " . $ORIGIN, ...)'
+              - pattern: "header('Access-Control-Allow-Origin: ' . $ORIGIN, ...)"
+          - focus-metavariable: $ORIGIN
+          # an explicit allowlist membership check is the fix, not the bug
+          - pattern-not-inside: |
+              if (in_array($ORIGIN, ...)) {
+                ...
+              }
+          - pattern-not-inside: |
+              if (array_key_exists($ORIGIN, ...)) {
+                ...
+              }
+      - patterns:
+          - pattern-inside: |
+              $HEADER = "Access-Control-Allow-Origin: " . $ORIGIN;
+              ...
+              header($HEADER);
+          - pattern: header($HEADER)
+      - patterns:
+          - pattern-inside: |
+              $HEADER = 'Access-Control-Allow-Origin: ' . $ORIGIN;
+              ...
+              header($HEADER);
+          - pattern: header($HEADER)
