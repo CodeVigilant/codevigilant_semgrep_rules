@@ -1,0 +1,40 @@
+rules:
+  - id: codevigilant.php.wordpress.auth.hmac_key.request_supplied
+    mode: taint
+    languages: [php]
+    severity: HIGH
+    message: >-
+      The key used to compute or verify an HMAC signature comes from request data
+      ($_POST/$_GET/$_REQUEST/$_COOKIE, the php://input body or a request header), so an
+      attacker supplies the signing key together with the payload and the signature check
+      proves nothing (CWE-807/CWE-345). Load the secret from server-side configuration
+      (get_option(), a constant, wp_salt()) and fail closed when it is empty.
+    metadata:
+      category: security
+      cwe: "CWE-807: Reliance on Untrusted Inputs in a Security Decision"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://cwe.mitre.org/data/definitions/807.html
+        - https://developer.wordpress.org/apis/security/nonces/
+    pattern-sources:
+      - pattern-either:
+          - pattern: $_POST
+          - pattern: $_GET
+          - pattern: $_REQUEST
+          - pattern: $_COOKIE
+          - pattern: getallheaders()
+          - pattern: file_get_contents("php://input")
+          - pattern: file_get_contents('php://input')
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: hash_hmac($ALGO, $DATA, $KEY, ...)
+              - pattern: hash_hmac_file($ALGO, $FILE, $KEY, ...)
+          - focus-metavariable: $KEY
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: wp_salt(...)
+          - pattern: get_option(...)
+          - pattern: getenv(...)
