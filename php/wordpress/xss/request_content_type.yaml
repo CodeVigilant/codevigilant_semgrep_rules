@@ -1,0 +1,70 @@
+rules:
+  # ============================================================================
+  # Response MIME type taken from the request
+  #
+  # Real-world shape (automura-for-gravity-forms <= 1.0.0, CVE-2026-135428,
+  # 6.1, CWE-79): a REST callback reads a "file type" parameter out of the
+  # request and concatenates it into a Content-Type header, then echoes another
+  # request parameter as the body. A caller sends text/html plus script markup
+  # and the browser renders it as a page in the site's origin.
+  #
+  # Legitimate code never lets the client choose the response MIME type: it
+  # picks one literal value, an allowlist branch, or sanitize_mime_type().
+  # ============================================================================
+  - id: codevigilant.php.wordpress.xss.request_content_type.serve
+    message: |
+      Attacker-controlled Content-Type: the response MIME type is built from
+      request input (`$_GET`/`$_POST`/`$_REQUEST`/`$_COOKIE`,
+      `WP_REST_Request::get_param()` and friends, `filter_input()`,
+      `get_query_var()`).
+
+      A client that asks for `text/html` turns any echoed request value into
+      reflected XSS in the site's origin. Pick the MIME type from a literal or
+      an allowlist, or pass it through sanitize_mime_type().
+    severity: ERROR
+    languages: [php]
+    mode: taint
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $_GET
+              - pattern: $_POST
+              - pattern: $_REQUEST
+              - pattern: $_COOKIE
+              - pattern: $REQ->get_param(...)
+              - pattern: $REQ->get_params(...)
+              - pattern: $REQ->get_json_params(...)
+              - pattern: $REQ->get_body_params(...)
+              - pattern: $REQ->get_query_params(...)
+              - pattern: $REQ->get_file_params(...)
+              - pattern: $REQ->get_header(...)
+              - pattern: filter_input(...)
+              - pattern: get_query_var(...)
+    pattern-sanitizers:
+      - patterns:
+          - pattern-either:
+              - pattern: sanitize_mime_type(...)
+              - pattern: sanitize_key(...)
+              - pattern: sanitize_text_field(...)
+              - pattern: sanitize_title(...)
+              - pattern: intval(...)
+              - pattern: absint(...)
+    pattern-sinks:
+      - patterns:
+          - pattern: header($H, ...)
+          - metavariable-regex:
+              metavariable: $H
+              regex: (?i).*content-type.*
+          - focus-metavariable: $H
+          - pattern-not-inside: |
+              if (in_array($T, ...)) { ... }
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: wordpress
+      confidence: HIGH
+      references:
+        - https://developer.wordpress.org/apis/security/data-validation/
+        - https://developer.wordpress.org/reference/functions/sanitize_mime_type/
+        - https://nvd.nist.gov/vuln/detail/CVE-2026-135428

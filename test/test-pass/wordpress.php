@@ -143,3 +143,25 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// XSS — response MIME type from a literal / sanitizer, never from the client
+// ---------------------------------------------------------------------------
+
+function safe_xss_literal_content_type($request) {
+    $content = wp_kses_post($request->get_param('file'));
+    header('Content-Type: text/csv');
+    echo $content;
+}
+
+function safe_xss_sanitized_content_type($request) {
+    $type = sanitize_mime_type($request->get_param('file_type'));
+    header('Content-Type: ' . $type);
+}
+
+function safe_xss_allowlisted_content_type($request) {
+    $type = (string) $request->get_param('file_type');
+    if (in_array($type, array('text/csv', 'application/json'), true)) {
+        header('Content-Type: ' . $type);
+    }
+}
