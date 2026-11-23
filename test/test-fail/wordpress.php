@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.xss.request_content_type.serve
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,21 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// XSS — response Content-Type chosen by the client
+// Shape: automura-for-gravity-forms <= 1.0.0 (CVE-2026-135428) — the REST
+// callback sets the MIME type from a request parameter and echoes another one,
+// so `text/html` + script markup renders as a page in the site's origin.
+// ---------------------------------------------------------------------------
+
+function vuln_xss_request_content_type() {
+    // EXPECTED: xss.request_content_type.serve
+    $content = $request->get_param('automura_gf_file');
+    $type    = (string) $request->get_param('automura_gf_file_type');
+    if ($type) {
+        header('Content-Type: ' . $type, true);
+    }
+    echo $content;
 }
