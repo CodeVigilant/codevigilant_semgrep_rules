@@ -34,6 +34,7 @@
 // codevigilant.php.wordpress.ssrf.getpost.wp_remote.taint
 // codevigilant.php.wordpress.rce.getpost.file_get_contents_eval.chain
 // codevigilant.php.wordpress.insecure_deserialization.getpost.unserialize.direct
+// codevigilant.php.wordpress.auth.hmac_key.request_supplied
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -234,4 +235,22 @@ function vuln_rce_file_get_contents_eval() {
 function vuln_deserialize() {
     // EXPECTED: insecure_deserialization.getpost.unserialize.direct
     $obj = unserialize($_POST['data']);
+}
+
+// ---------------------------------------------------------------------------
+// Auth — HMAC verification key taken from request data (CWE-807)
+// ---------------------------------------------------------------------------
+
+function vuln_hmac_key_from_request() {
+    // EXPECTED: auth.hmac_key.request_supplied
+    $secret = $_POST['webhook_secret'];
+    $calculated = hash_hmac('sha256', $payload, $secret);
+    return hash_equals($calculated, $signature);
+}
+
+function vuln_hmac_key_from_body() {
+    // EXPECTED: auth.hmac_key.request_supplied
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    return hash_hmac('sha256', $raw, $data['signing_key']);
 }

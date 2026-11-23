@@ -143,3 +143,22 @@ function safe_deserialize_json() {
     $raw = sanitize_text_field($_POST['data']);
     $obj = json_decode($raw, true);
 }
+
+// ---------------------------------------------------------------------------
+// Auth — HMAC key from server-side configuration, never from the request
+// ---------------------------------------------------------------------------
+
+function safe_hmac_key_from_option() {
+    $secret = get_option('myplugin_webhook_secret');
+    $calculated = hash_hmac('sha256', $raw_body, $secret);
+    return hash_equals($calculated, $signature);
+}
+
+function safe_hmac_key_from_salt() {
+    $secret = wp_salt('auth');
+    return hash_hmac('sha256', $payload, $secret);
+}
+
+function safe_hmac_key_from_constant() {
+    return hash_hmac('sha256', $payload, MYPLUGIN_WEBHOOK_SECRET);
+}
