@@ -1,0 +1,78 @@
+rules:
+  # ============================================================================
+  # JENKINS FORM-VALIDATION do*() ENDPOINT WITHOUT A PERMISSION CHECK (CWE-862)
+  # Generic shape: a descriptor / behaviour class exposes a public
+  # `FormValidation doXxx(@QueryParameter ...)` method (Stapler maps it to
+  # /descriptorByName/.../<name> and any user who can read the surrounding page
+  # can call it) and the method body never calls checkPermission()/
+  # checkAnyPermission(). Jenkins adds no implicit ACL check to descriptor
+  # form-validation methods, so the endpoint does its work for callers holding
+  # no configure/administer right on the object being validated: it can leak
+  # configuration values, act as a validity oracle, or run expensive work on the
+  # controller. Fix: explicit checkPermission(Item.CONFIGURE) /
+  # checkAnyPermission(...) / Jenkins.ADMINISTER at the top of the method.
+  # Parameter annotations carrying an argument and `final` modifiers are covered
+  # (`@QueryParameter("x") final String x`) because real descriptor methods
+  # almost always use both.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.authorization.form-validation-missing-permission-check
+    message: >-
+      $M() is a descriptor form-validation endpoint reachable through Stapler
+      (/descriptorByName/...) that takes request parameters but never calls
+      checkPermission()/checkAnyPermission(). Jenkins performs no implicit ACL
+      check for these methods, so any user able to read the surrounding page can
+      invoke it (CWE-862 Missing Authorization). Add an explicit permission
+      check (Item.CONFIGURE for job-scoped descriptors, Jenkins.ADMINISTER for
+      global configuration) before doing any work or returning any value.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              public FormValidation $M(@QueryParameter(...) $T $V, ...) {
+                ...
+              }
+          - pattern: |
+              public FormValidation $M(..., @QueryParameter(...) $T $V, ...) {
+                ...
+              }
+      - metavariable-regex:
+          metavariable: $M
+          regex: ^do[A-Z][A-Za-z0-9_]*$
+      - pattern-not-inside: |
+          public FormValidation $M(...) {
+            ...
+            checkPermission(...);
+            ...
+          }
+      - pattern-not-inside: |
+          public FormValidation $M(...) {
+            ...
+            $X.checkPermission(...);
+            ...
+          }
+      - pattern-not-inside: |
+          public FormValidation $M(...) {
+            ...
+            checkAnyPermission(...);
+            ...
+          }
+      - pattern-not-inside: |
+          public FormValidation $M(...) {
+            ...
+            $X.checkAnyPermission(...);
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 - Broken Access Control"
+      technology: jenkins
+      confidence: LOW
+      references:
+        - https://www.jenkins.io/doc/developer/security/
+        - https://www.jenkins.io/doc/developer/security/form-validation/
+        - https://cwe.mitre.org/data/definitions/862.html
+      source: semgrep-rule-gap
+      license: MIT
