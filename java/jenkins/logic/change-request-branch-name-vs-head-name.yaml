@@ -1,0 +1,45 @@
+rules:
+  # ============================================================================
+  # CHANGE-REQUEST SOURCE BRANCH NAME COMPARED WITH A HEAD NAME
+  # (CWE-697 Incorrect Comparison)
+  # Generic shape: a filter/predicate walks the request's change requests and
+  # decides something about the current SCMHead by comparing
+  #   <change request>.getSource().getBranch().getName()
+  # with $HEAD.getName(). Change-request heads are named after the request
+  # identifier (e.g. PR-<id>), not after the branch the request comes from, so
+  # the two strings can never be equal: the predicate is always false and the
+  # exclusion/authorisation decision it guards silently never fires. Match the
+  # request by its identifier (getId()/number) or by the head's branch-name
+  # accessor instead.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.logic.change-request-branch-name-vs-head-name
+    message: >-
+      $HEAD.getName() is compared for equality with a change request's source
+      branch name ($PR.getSource().getBranch().getName()). Change-request heads
+      are named from the request identifier, not from their source branch, so
+      this comparison is always false and the decision it guards (filtering,
+      exclusion, permission) never takes effect (CWE-697). Compare the request
+      identifier ($PR.getId()) with the head's identifier, or compare against
+      the head's branch-name accessor, and add a test that asserts the guarded
+      branch actually triggers.
+    severity: WARNING
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: $PR.getSource().getBranch().getName().equals($HEAD.getName())
+          - pattern: $HEAD.getName().equals($PR.getSource().getBranch().getName())
+          - pattern: |
+              $PR.getSource().getBranch().getName().equalsIgnoreCase($HEAD.getName())
+          - pattern: |
+              $HEAD.getName().equalsIgnoreCase($PR.getSource().getBranch().getName())
+    metadata:
+      category: security
+      cwe: "CWE-697: Incorrect Comparison"
+      owasp: "A04:2021 - Insecure Design"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/697.html
+      source: semgrep-rule-gap
+      license: MIT
