@@ -1,0 +1,50 @@
+rules:
+  # ============================================================================
+  # JELLY TEMPLATE RENDERS AN ITERATED MODEL COLLECTION AS RAW `${var}`
+  # (CWE-79 Stored/Reflected XSS)
+  # Generic shape: a view template iterates a model-provided collection
+  # (`<j:forEach var="x" items="${...}">`) and emits the loop variable into
+  # HTML with a bare `${x}` interpolation. Jenkins' Jelly engine performs no
+  # automatic HTML escaping for `${...}` in text nodes or attribute values, so
+  # every element that reaches the template becomes markup/script in the page
+  # origin. Collections sourced from SCM metadata, user profiles, build
+  # parameters or configuration are attacker-influenceable. Emit such values
+  # through `<st:out value="${x}"/>` (or a position-aware escape helper) and
+  # encode attribute values separately.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.xss.jelly-unescaped-forEach-interpolation
+    message: >-
+      A Jelly template iterates a model collection and writes the loop variable
+      with a bare `${$V}` interpolation. The Jenkins Jelly engine does not
+      HTML-escape `${...}` output, so collection elements (SCM changelog data,
+      user/profile fields, build parameters, configuration) are rendered as raw
+      markup and can execute script in the Jenkins origin (CWE-79). Render the
+      value with an escaping tag/helper (`<st:out value="${$V}"/>`) and encode
+      it for the surrounding HTML attribute context.
+    severity: ERROR
+    languages: [generic]
+    paths:
+      include:
+        - "*.jelly"
+    patterns:
+      - pattern-either:
+          - pattern: |
+              <j:forEach var="$V" ...>...${$V}...</j:forEach>
+          - pattern: |
+              <j:forEach var="$V" ...>...<td>$V</td>...</j:forEach>
+      - pattern-not: |
+          <j:forEach var="$V" ...>...<st:out value="${$V}"/>...</j:forEach>
+      - pattern-not: |
+          <j:forEach var="$V" ...>...<st:out value="$V"/>...</j:forEach>
+    metadata:
+      category: security
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A03:2021 - Injection"
+      technology: jenkins
+      confidence: LOW
+      references:
+        - https://www.jenkins.io/doc/developer/views/
+        - https://cwe.mitre.org/data/definitions/79.html
+      source: semgrep-rule-gap
+      license: MIT
