@@ -1,0 +1,76 @@
+rules:
+  # ============================================================================
+  # NETWORK-DOWNLOADED ARTIFACT MADE EXECUTABLE WITHOUT INTEGRITY VERIFICATION
+  # (CWE-494: Download of Code Without Integrity Check)
+  # Generic shape: inside one method, an HTTP response body / URL stream is
+  # written to a local file and that file is then made executable
+  # (`File.setExecutable(...)`, `Files.setPosixFilePermissions(...)`) and handed
+  # to a process launcher. Nothing in the method pins or verifies the bytes
+  # (SHA-256/digest/signature), so whatever the endpoint or its redirect chain
+  # serves runs with the Jenkins controller's privileges.
+  # ============================================================================
+
+  - id: codevigilant.java.jenkins.supply-chain.unverified-downloaded-executable
+    message: >-
+      A file fetched over HTTP(S) in this method is written to disk and then
+      made executable without any digest or signature verification of the
+      downloaded bytes. An attacker able to influence the HTTP response
+      (compromised upstream or CDN, intercepted/misconfigured proxy, DNS or TLS
+      mis-issuance) substitutes the artifact and obtains code execution with the
+      Jenkins controller's privileges (CWE-494). Pin the artifact version and
+      verify a known-good SHA-256 or detached signature of the downloaded bytes
+      before making the file executable and launching it.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern-inside: |
+              $RET $METH(...) {
+                ...
+                $RESP = $CLIENT.send($REQ, $H);
+                ...
+              }
+          - pattern-inside: |
+              $RET $METH(...) {
+                ...
+                $IN = $URL.openStream();
+                ...
+              }
+          - pattern-inside: |
+              $RET $METH(...) {
+                ...
+                $IN = $CONN.getInputStream();
+                ...
+              }
+      - pattern-either:
+          - pattern: $F.setExecutable(...)
+          - pattern: Files.setPosixFilePermissions($P, $PERMS)
+      - pattern-not-inside: |
+          $RET $METH(...) {
+            ...
+            MessageDigest.getInstance(...);
+            ...
+          }
+      - pattern-not-inside: |
+          $RET $METH(...) {
+            ...
+            DigestUtils.$HASH(...);
+            ...
+          }
+      - pattern-not-inside: |
+          $RET $METH(...) {
+            ...
+            $SIG.verify(...);
+            ...
+          }
+    metadata:
+      category: security
+      cwe: "CWE-494: Download of Code Without Integrity Check"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      technology: jenkins
+      confidence: MEDIUM
+      references:
+        - https://cwe.mitre.org/data/definitions/494.html
+        - https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/
+      source: semgrep-rule-gap
+      license: MIT
